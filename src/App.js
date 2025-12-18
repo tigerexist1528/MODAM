@@ -3097,7 +3097,12 @@ export default function App() {
           ) : (
             // ★ 3. 비로그인 상태: 버튼 하나로 통합!
             // 이 버튼을 누르면 모달 창 스위치를 켭니다(true)
-            <button onClick={() => setIsLoginModalOpen(true)}>로그인</button>
+            <button
+              className="main-login-btn"
+              onClick={() => setIsLoginModalOpen(true)}
+            >
+              로그인
+            </button>
           )}
         </div>
       </header>
