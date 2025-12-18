@@ -467,7 +467,7 @@ export const loadGameData = async () => {
 const IMAGE_BASE_URL =
   "https://raw.githubusercontent.com/tigerexist1528/modam-assets/main/images";
 
-export const PLACEHOLDER_IMG = `${IMAGE_BASE_URL}/MODAM.png`;
+const PLACEHOLDER_IMG = `${IMAGE_BASE_URL}/MODAM.png`;
 
 const SLOT_FOLDER_MAP = {
   무기: "weapon",

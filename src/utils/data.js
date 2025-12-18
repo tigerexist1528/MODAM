@@ -4,6 +4,8 @@
 export const IMAGE_BASE_URL =
   "https://raw.githubusercontent.com/tigerexist1528/modam-assets/main/images";
 
+export const PLACEHOLDER_IMG = `${IMAGE_BASE_URL}/MODAM.png`;
+
 // -----------------------------------------------------------------------------
 // 슬롯 영어 이름 정의
 // -----------------------------------------------------------------------------
