@@ -3272,6 +3272,16 @@ export default function App() {
           onClose={() => setIsLogoutModalOpen(false)}
         />
       )}
+      {(isFirstTimeSetup || isProfileModalOpen) && (
+        <ProfileModal
+          session={session}
+          isFirstTime={isFirstTimeSetup}
+          onClose={() => {
+            setIsFirstTimeSetup(false);
+            setIsProfileModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
