@@ -48,7 +48,7 @@ const LoginModal = ({ onClose }) => {
             onClick={() => handleLogin("google")}
           >
             <img
-              src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"
+              src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg"
               alt="google"
             />
             Google 로그인
