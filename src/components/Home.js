@@ -1,170 +1,169 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../utils/supabaseClient";
 
+// ★ 더미 이벤트 데이터 (나중에 DB나 크롤링으로 대체 가능)
+// 실제 던파 모바일 홈페이지 이벤트 링크를 href에 넣으면 됩니다.
+const DUMMY_EVENTS = [
+  {
+    id: 1,
+    title: "윈터 슬라이딩 ❄️",
+    dDay: "진행중",
+    date: "2025년 12월 18일(목) ~ 2026년 1월 22일(목) 오전 6시까지",
+    imgUrl:
+      "https://dszw1qtcnsa5e.cloudfront.net/community/20251216/b8dd8acc-b0ef-4f10-b8a6-678066501aba/KMDF01%EC%9C%88%ED%84%B0%EC%8A%AC%EB%9D%BC%EC%9D%B4%EB%94%A9%EC%83%81%EC%A0%90%EC%84%AC%EB%84%A4%EC%9D%BC768x492.png", // 이미지 주소 교체 필요
+    link: "https://dnfm.nexon.com/News/Event/View/3309301",
+  },
+  {
+    id: 2,
+    title: "크리스마스 트리를 부탁해! 🎄",
+    dDay: "진행중",
+    date: "2025년 12월 18일(목) ~ 2026년 1월 8일(목) 오전 6시까지",
+    imgUrl:
+      "https://dszw1qtcnsa5e.cloudfront.net/community/20251217/a5d3184c-5751-45e6-b85d-dbcee6cdb360/KMDF02%ED%81%AC%EB%A6%AC%EC%8A%A4%EB%A7%88%EC%8A%A4%ED%8A%B8%EB%A6%AC%EB%A5%BC%EB%B6%80%ED%83%81%ED%95%B4%EC%83%81%EC%A0%90%EC%84%AC%EB%84%A4%EC%9D%BC768x492.png",
+    link: "https://dnfm.nexon.com/News/Event/View/3309300",
+  },
+  {
+    id: 3,
+    title: "윈터 코인 상점 ❄️",
+    dDay: "진행중",
+    date: "2025년 12월 18일(목) ~ 2026년 1월 22일(목) 오전 6시까지",
+    imgUrl:
+      "https://dszw1qtcnsa5e.cloudfront.net/community/20251215/63b733ab-1314-4694-a221-ce6bd0255590/KMDF03%EC%9C%88%ED%84%B0%EC%BD%94%EC%9D%B8%EC%83%81%EC%A0%90%EC%83%81%EC%A0%90%EC%84%AC%EB%84%A4%EC%9D%BC768x492.png",
+    link: "https://dnfm.nexon.com/News/Event/View/3309299",
+  },
+  {
+    id: 4,
+    title: "12/18(목) 업데이트 안내",
+    dDay: "진행중",
+    date: "2025년 12월 18일(목)",
+    imgUrl:
+      "https://dszw1qtcnsa5e.cloudfront.net/community/20250604/c9257841-65df-4ec2-aa70-9f1615c4d587/image202506041421311.jpeg",
+    link: "https://dnfm.nexon.com/News/Update/View/3309306t",
+  },
+];
+
 const Home = ({ setActivePage }) => {
-  // --- 상태 관리 ---
   const [notices, setNotices] = useState([]);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isWriting, setIsWriting] = useState(false);
-  const [expandedId, setExpandedId] = useState(null); // ★ [NEW] 열린 글 ID 저장
 
-  // 새 공지 입력값
-  const [newNotice, setNewNotice] = useState({ title: "", content: "" });
-
-  // ★ [필수] 본인의 UUID를 여기에 넣으세요
-  const ADMIN_ID = "2f9ff0d3-4b34-42dd-9be6-ba4fea6aa3ff";
-
-  // --- 초기화 ---
+  // 공지사항 5개만 가져오기
   useEffect(() => {
-    fetchNotices();
-    checkAdmin();
+    fetchLatestNotices();
   }, []);
 
-  const checkAdmin = async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (session && session.user.id === ADMIN_ID) {
-      setIsAdmin(true);
-    }
-  };
-
-  const fetchNotices = async () => {
+  const fetchLatestNotices = async () => {
     const { data, error } = await supabase
       .from("notices")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (!error) setNotices(data || []);
-  };
+      .select("id, title, created_at")
+      .order("created_at", { ascending: false })
+      .limit(5); // 최근 5개만
 
-  const handleWrite = async () => {
-    if (!newNotice.title) return alert("제목을 입력해주세요.");
-
-    const { error } = await supabase
-      .from("notices")
-      .insert([{ title: newNotice.title, content: newNotice.content || "" }]);
-
-    if (error) {
-      alert("작성 실패: " + error.message);
-    } else {
-      alert("등록되었습니다.");
-      setNewNotice({ title: "", content: "" });
-      setIsWriting(false);
-      fetchNotices();
-    }
-  };
-
-  const handleDelete = async (id, e) => {
-    e.stopPropagation(); // 클릭 이벤트가 부모(글 열기)로 전파되는 것 방지
-    if (!window.confirm("정말 삭제하시겠습니까?")) return;
-
-    const { error } = await supabase.from("notices").delete().eq("id", id);
-    if (error) alert("삭제 실패");
-    else fetchNotices();
-  };
-
-  // ★ [NEW] 글 열고 닫기 함수
-  const toggleExpand = (id) => {
-    if (expandedId === id) {
-      setExpandedId(null); // 이미 열려있으면 닫기
-    } else {
-      setExpandedId(id); // 아니면 열기
+    if (!error && data) {
+      setNotices(data);
     }
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return `${String(date.getMonth() + 1).padStart(2, "0")}.${String(
-      date.getDate()
-    ).padStart(2, "0")}`;
-  };
-
-  const getTagColor = (title) => {
-    if (title.includes("Patch") || title.includes("패치")) return "#ff5a6a";
-    if (title.includes("New") || title.includes("오픈")) return "#00ff00";
-    return "var(--grade-unique)";
+    return `${date.getMonth() + 1}.${date.getDate()}`;
   };
 
   return (
     <div className="home-container">
-      {/* 1. 히어로 배너 */}
-      <div className="hero-banner">
-        <div className="hero-title">MODAM</div>
-        <div className="hero-subtitle">
-          던전앤파이터 모바일의 모든 것을 담다.
-          <br />
-          데미지 계산 & 유틸리티 사이트
+      {/* 1. 히어로 배너 (사이트 대문) */}
+      <section className="hero-section">
+        <div className="hero-bg-effect"></div>
+        <div className="hero-content">
+          <h1 className="hero-title">
+            <span>MODAM</span> CALCULATOR
+          </h1>
+          <p className="hero-subtitle">
+            던전앤파이터 모바일 데미지 계산의 모든 것.
+            <br />
+            최적의 세팅을 지금 바로 확인하세요.
+          </p>
+          <button className="hero-btn" onClick={() => setActivePage("CALC")}>
+            계산기 바로가기 &rarr;
+          </button>
         </div>
-        <button className="cta-button" onClick={() => setActivePage("CALC")}>
-          데미지 계산기 시작하기
-        </button>
-      </div>
+      </section>
 
-      {/* 2. 대시보드 그리드 */}
-      <div className="dashboard-grid">
-        {/* [A] 공지사항 */}
-        <div className="content-card">
-          <div className="card-header">
-            <div className="card-title">📢 공지사항</div>
-            <div style={{ display: "flex", gap: "10px", fontSize: "0.8rem" }}>
-              {/* 더보기 버튼: 클릭 시 전체 페이지(NOTICE)로 이동 */}
-              <span
-                onClick={() => setActivePage("NOTICE")}
-                style={{ color: "#666", cursor: "pointer" }}
-              >
-                더보기 +
-              </span>
+      {/* 2. 진행중인 이벤트 (슬라이더) */}
+      <section className="section-container">
+        <div className="section-header">
+          <div className="section-title">🔥 진행중인 이벤트</div>
+          <div
+            className="section-more"
+            onClick={() =>
+              window.open("https://dnfm.nexon.com/Event", "_blank")
+            }
+          >
+            공식 홈페이지 바로가기 &gt;
+          </div>
+        </div>
+
+        <div className="event-slider">
+          {DUMMY_EVENTS.map((evt) => (
+            <a
+              key={evt.id}
+              href={evt.link}
+              target="_blank"
+              rel="noreferrer"
+              className="event-card"
+            >
+              <img src={evt.imgUrl} alt={evt.title} className="event-img" />
+              <div className="event-info">
+                <span className="d-day-badge">{evt.dDay}</span>
+                <div className="event-title">{evt.title}</div>
+                <div className="event-date">{evt.date}</div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. 하단 정보 그리드 (공지사항 + 퀵메뉴) */}
+      <section className="bottom-grid">
+        {/* [A] 최신 공지사항 */}
+        <div className="info-card">
+          <div
+            className="section-header"
+            style={{ marginBottom: "15px", borderBottom: "1px solid #333" }}
+          >
+            <div className="section-title" style={{ fontSize: "1.1rem" }}>
+              📢 최신 소식
+            </div>
+            <div
+              className="section-more"
+              onClick={() => setActivePage("BOARD")}
+            >
+              + 더보기
             </div>
           </div>
-
-          <div className="notice-list">
+          <div className="notice-list-simple">
             {notices.length === 0 ? (
               <div
-                style={{
-                  padding: "20px",
-                  textAlign: "center",
-                  color: "#666",
-                  fontSize: "0.9rem",
-                }}
+                style={{ color: "#666", textAlign: "center", padding: "20px" }}
               >
                 등록된 공지사항이 없습니다.
               </div>
             ) : (
-              // 홈에서는 최신 3~4개만, 제목만 깔끔하게 보여줌
-              notices.slice(0, 4).map((notice) => (
+              notices.map((notice) => (
                 <div
                   key={notice.id}
-                  className="notice-item"
-                  onClick={() => setActivePage("NOTICE")} // 누르면 전체보기로 이동
-                  style={{ cursor: "pointer" }}
+                  className="notice-row"
+                  onClick={() => setActivePage("BOARD")}
                 >
                   <div
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "6px",
                       overflow: "hidden",
                     }}
                   >
-                    <span
-                      className="notice-tag"
-                      style={{ color: getTagColor(notice.title) }}
-                    >
-                      {notice.title.startsWith("[")
-                        ? notice.title.split("]")[0].replace("[", "")
-                        : "Notice"}
-                    </span>
-                    <span
-                      style={{
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {notice.title.replace(/^\[.*?\]\s*/, "")}
-                    </span>
+                    <span className="notice-cat">Notice</span>
+                    <span className="notice-subj">{notice.title}</span>
                   </div>
-                  <span className="notice-date">
+                  <span className="notice-dt">
                     {formatDate(notice.created_at)}
                   </span>
                 </div>
@@ -173,52 +172,36 @@ const Home = ({ setActivePage }) => {
           </div>
         </div>
 
-        {/* [B] 유틸리티 메뉴 */}
-        <div className="content-card">
-          <div className="card-header">
-            <div className="card-title">🛠️ 유틸리티</div>
-          </div>
-          <div className="menu-grid">
-            <div className="menu-item" onClick={() => setActivePage("CALC")}>
-              <span className="menu-icon">🧮</span>
-              <span className="menu-label">계산기</span>
-            </div>
-            <div className="menu-item" onClick={() => alert("준비 중입니다!")}>
-              <span className="menu-icon">📚</span>
-              <span className="menu-label">아이템 도감</span>
-            </div>
-            <div className="menu-item" onClick={() => alert("준비 중입니다!")}>
-              <span className="menu-icon">📊</span>
-              <span className="menu-label">직업 랭킹</span>
-            </div>
-            <div className="menu-item" onClick={() => setActivePage("BOARD")}>
-              {" "}
-              <span className="menu-icon">📝</span>
-              <span className="menu-label">공략 게시판</span>
-            </div>
-          </div>
-        </div>
-
-        {/* [C] 업데이트 예정 */}
-        <div className="content-card">
-          <div className="card-header">
-            <div className="card-title">🚀 업데이트 예정</div>
-          </div>
-          <ul
-            style={{
-              color: "#aaa",
-              paddingLeft: "20px",
-              lineHeight: "1.8",
-              fontSize: "0.9rem",
-            }}
+        {/* [B] 퀵 메뉴 */}
+        <div className="info-card">
+          <div
+            className="section-header"
+            style={{ marginBottom: "15px", borderBottom: "1px solid #333" }}
           >
-            <li>길드 모집 등 홍보 게시판 기능</li>
-            <li>모바일 환경 UI 최적화 (2차)</li>
-            <li>모든 직업 스킬트리 추가</li>
-            <li>일부 장비 누락된 효과 추가</li>
-          </ul>
+            <div className="section-title" style={{ fontSize: "1.1rem" }}>
+              ⚡ 바로가기
+            </div>
+          </div>
+          <div className="quick-menu-grid">
+            <div className="quick-btn" onClick={() => setActivePage("CALC")}>
+              <span className="quick-icon">🧮</span>
+              데미지 계산기
+            </div>
+            <div className="quick-btn" onClick={() => setActivePage("BOARD")}>
+              <span className="quick-icon">📝</span>
+              공략 게시판
+            </div>
+            <div className="quick-btn" onClick={() => setActivePage("RANK")}>
+              <span className="quick-icon">🏆</span>
+              직업 랭킹
+            </div>
+            <div className="quick-btn" onClick={() => setActivePage("GAME")}>
+              <span className="quick-icon">🎮</span>
+              미니 게임
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 };
