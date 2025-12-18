@@ -11,7 +11,7 @@ import {
 // 2. 유틸/상수 (src/utils/data.js)
 import {
   IMAGE_BASE_URL,
-  GET_ITEM_ICON,
+  GET_ITEM_ICON_LOCAL,
   PLACEHOLDER_IMG,
   WEAPON_TYPES,
   EXCEED_SLOTS,
