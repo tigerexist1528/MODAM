@@ -6,7 +6,7 @@
   /* public 폴더는 생략하고 /fonts/... 로 시작하면 됩니다.
      파일 확장자(.ttf, .woff, .otf)를 정확히 맞춰주세요! 
   */
-  src: url("/fonts/MODAM_font.ttf") format("truetype");
+  src: url("./fonts/MODAM_font.ttf") format("truetype");
   /* .woff 파일이라면 format('woff') */
   font-weight: normal;
   font-style: normal;
