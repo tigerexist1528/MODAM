@@ -46,6 +46,11 @@ export const GET_ITEM_ICON_LOCAL = (name, slot) => {
   return `${IMAGE_BASE_URL}/items/${folder}/${cleanName}.png`;
 };
 
+export const GET_JOB_ICON = (type, name) => {
+  if (!type || !name) return PLACEHOLDER_IMG;
+  return `${IMAGE_BASE_URL}/characters/${type}/${name}.png`;
+};
+
 // -----------------------------------------------------------------------------
 // 등급별 색상 반환 / 옵션 등급별 색상 반환
 // -----------------------------------------------------------------------------
@@ -587,6 +592,84 @@ export const getMergedSealText = (main, sub) => {
   return result || main || sub;
 };
 
+// ---------------------------------------------------------
+// 헬퍼 함수 extractStats
+// ---------------------------------------------------------
+
+// [2] 헬퍼 함수 (extractStats: 상태이상 및 스킬 파싱 강화)
+export const extractStats = (row) => {
+  if (!row) return {};
+  if (row.stats && typeof row.stats === "object" && !Array.isArray(row.stats)) {
+    return row.stats;
+  }
+
+  const stats = {};
+
+  Object.keys(row).forEach((key) => {
+    let val = Number(row[key]);
+    if (!val) return;
+
+    let cleanKey = "";
+    if (key.startsWith("stats_")) cleanKey = key.replace("stats_", "");
+    else if (
+      [
+        "str",
+        "int",
+        "physAtk",
+        "magAtk",
+        "atkSpeed",
+        "castSpeed",
+        "moveSpeed",
+        "physCrit",
+        "magCrit",
+      ].includes(key)
+    )
+      cleanKey = key;
+    else return;
+
+    // 1. 스킬 관련 (skill_lv_..., skill_dmg_...)
+    if (cleanKey.startsWith("skill_")) {
+      if (!stats.skill) stats.skill = {};
+      const parts = cleanKey.split("_"); // [skill, lv, lv30]
+      const type = parts[1]; // lv, dmg, cdr
+      const target = parts[2]; // lv30
+
+      if (!stats.skill[type]) stats.skill[type] = {};
+      stats.skill[type][target] = val;
+    }
+    // ★ 2. 상태이상 관련 (status_poisonDmg...)
+    else if (cleanKey.startsWith("status_")) {
+      if (!stats.status) stats.status = {};
+      const subKey = cleanKey.replace("status_", ""); // poisonDmg
+
+      // 혹시 모를 오타 교정 (posion -> poison)
+      const fixedKey = subKey.replace("posion", "poison");
+      stats.status[fixedKey] = val;
+    }
+    // 3. 일반 스탯
+    else {
+      stats[cleanKey] = val;
+    }
+  });
+
+  return stats;
+};
+
+export const transformLevelDB = (rows) => {
+  const result = {};
+  if (!Array.isArray(rows)) return result;
+
+  rows.forEach((row) => {
+    const key = (row.type || row.slot || row.group || row.Group || "").trim();
+    if (!key) return;
+
+    if (!result[key]) result[key] = {};
+    const stats = extractStats(row);
+    result[key][row.level] = stats;
+  });
+  return result;
+};
+
 // -----------------------------------------------------------------------------
 // 장비 슬롯 정의
 // -----------------------------------------------------------------------------
@@ -655,6 +738,24 @@ export const WEAPON_TYPES = {
   마창사: ["미늘창", "투창"],
 };
 
+export const EMBLEM_RULES = {
+  머리어깨: { slots: 2, types: ["Yellow"] },
+  상의: { slots: 2, types: ["Red"] },
+  하의: { slots: 2, types: ["Red"] },
+  벨트: { slots: 2, types: ["Yellow"] },
+  신발: { slots: 2, types: ["Blue"] },
+  팔찌: { slots: 2, types: ["Blue"] },
+  목걸이: { slots: 2, types: ["Green"] },
+  반지: { slots: 2, types: ["Green"] },
+  무기: { slots: 2, types: ["Red", "Yellow", "Green", "Blue"] },
+  보조장비: { slots: 1, types: ["Platinum"] },
+  마법석: { slots: 1, types: ["Platinum"] },
+  귀걸이: { slots: 1, types: ["Platinum"] },
+  칭호: { slots: 1, types: ["Platinum"] },
+  오라: { slots: 0, types: [] },
+  크리쳐: { slots: 0, types: [] },
+  아티팩트: { slots: 0, types: [] },
+};
 // -----------------------------------------------------------------------------
 // Initial State (초기 값)
 // -----------------------------------------------------------------------------

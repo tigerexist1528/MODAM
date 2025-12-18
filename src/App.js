@@ -18,7 +18,6 @@ import {
   POLISH_DB,
   MAGIC_OPTS_BY_GROUP,
   ENCHANT_LIST_BY_SLOT,
-  EMBLEM_RULES,
   EMBLEM_DB,
   TRAINING_DB,
   AVATAR_DB,
@@ -27,19 +26,16 @@ import {
   GEAR_POINT_BONUS_DB,
 
   // 3. 유틸리티 및 리소스
-  GET_ITEM_ICON,
   JOB_ILLUST,
-  JOB_PASSIVES,
-  UNIQUE_OPT_DESC,
-  PLACEHOLDER_IMG,
-  GET_JOB_ICON,
 } from "./data";
 
 // utils/data에서 필요한 데이터를 가져옵니다.
 import {
   IMAGE_BASE_URL,
+  PLACEHOLDER_IMG,
   SLOT_ENG_NAMES,
   GET_ITEM_ICON_LOCAL,
+  GET_JOB_ICON,
   getGradeColor,
   getOptionTierClass,
   getSetOptionSummary,
@@ -56,6 +52,7 @@ import {
   SPECIAL_SLOTS,
   JOB_STRUCTURE,
   WEAPON_TYPES,
+  EMBLEM_RULES,
   initialState,
 } from "./utils/data";
 

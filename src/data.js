@@ -1,13 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
-// ---------------------------------------------------------
-// [0] Supabase 설정
-// ---------------------------------------------------------
-// ★ 본인의 Supabase URL과 Key를 여기에 정확히 넣어주세요!
-const SUPABASE_URL = "https://bcwklweohiyrwlysfxpk.supabase.co";
-const SUPABASE_KEY = "sb_publishable__w1byKrIeUPPZ81ww2cbeA_kW92iViz";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+import { 
+  extractStats, 
+  transformLevelDB,
+  EMBLEM_RULES // 엠블렘 규칙도 가져옵니다.
+} from "./utils/data";
 
 // ---------------------------------------------------------
 // [1] 변수 선언
@@ -31,120 +28,6 @@ export let EMBLEM_DB = {
   Green: { name: "녹색빛", img: "green", stats: {} },
   Blue: { name: "푸른빛", img: "blue", stats: {} },
   Platinum: {},
-};
-
-export const EMBLEM_RULES = {
-  머리어깨: { slots: 2, types: ["Yellow"] },
-  상의: { slots: 2, types: ["Red"] },
-  하의: { slots: 2, types: ["Red"] },
-  벨트: { slots: 2, types: ["Yellow"] },
-  신발: { slots: 2, types: ["Blue"] },
-  팔찌: { slots: 2, types: ["Blue"] },
-  목걸이: { slots: 2, types: ["Green"] },
-  반지: { slots: 2, types: ["Green"] },
-  무기: { slots: 2, types: ["Red", "Yellow", "Green", "Blue"] },
-  보조장비: { slots: 1, types: ["Platinum"] },
-  마법석: { slots: 1, types: ["Platinum"] },
-  귀걸이: { slots: 1, types: ["Platinum"] },
-  칭호: { slots: 1, types: ["Platinum"] },
-  오라: { slots: 0, types: [] },
-  크리쳐: { slots: 0, types: [] },
-  아티팩트: { slots: 0, types: [] },
-};
-
-export const UNIQUE_OPT_DESC = {
-  "선택 안함": "",
-  광채: "공격 시 5% 확률로 광채 폭발 발생\n(모든 속성 강화 +20)",
-  분쇄: "카운터 공격 시 데미지 20% 증가\n(추가 데미지 +15%)",
-  선명: "모든 속성 강화 +20\n스킬 공격력 5% 증가",
-  강타: "물리/마법 공격력 15% 증가\n힘/지능 5% 증가",
-  이상: "상태이상 데미지 10% 증가\n상태이상 내성 무시 5%",
-  선봉: "대시 공격 시 슈퍼아머 생성\n이동속도 +10%, 데미지 증가 7%",
-  의지: "피격 시 받는 데미지 10% 감소\nHP MAX +500, 스킬 공격력 5%",
-};
-
-export const JOB_PASSIVES = {
-  웨펀마스터: { physCrit: 10, skillAtk: 20 },
-  소울브링어: { magCrit: 10, darkEle: 20, skillAtk: 15 },
-  // ...
-};
-
-// ---------------------------------------------------------
-// [2] 헬퍼 함수 (★ extractStats 업그레이드)
-// ---------------------------------------------------------
-
-// [2] 헬퍼 함수 (extractStats: 상태이상 및 스킬 파싱 강화)
-const extractStats = (row) => {
-  if (!row) return {};
-  if (row.stats && typeof row.stats === "object" && !Array.isArray(row.stats)) {
-    return row.stats;
-  }
-
-  const stats = {};
-
-  Object.keys(row).forEach((key) => {
-    let val = Number(row[key]);
-    if (!val) return;
-
-    let cleanKey = "";
-    if (key.startsWith("stats_")) cleanKey = key.replace("stats_", "");
-    else if (
-      [
-        "str",
-        "int",
-        "physAtk",
-        "magAtk",
-        "atkSpeed",
-        "castSpeed",
-        "moveSpeed",
-        "physCrit",
-        "magCrit",
-      ].includes(key)
-    )
-      cleanKey = key;
-    else return;
-
-    // 1. 스킬 관련 (skill_lv_..., skill_dmg_...)
-    if (cleanKey.startsWith("skill_")) {
-      if (!stats.skill) stats.skill = {};
-      const parts = cleanKey.split("_"); // [skill, lv, lv30]
-      const type = parts[1]; // lv, dmg, cdr
-      const target = parts[2]; // lv30
-
-      if (!stats.skill[type]) stats.skill[type] = {};
-      stats.skill[type][target] = val;
-    }
-    // ★ 2. 상태이상 관련 (status_poisonDmg...)
-    else if (cleanKey.startsWith("status_")) {
-      if (!stats.status) stats.status = {};
-      const subKey = cleanKey.replace("status_", ""); // poisonDmg
-
-      // 혹시 모를 오타 교정 (posion -> poison)
-      const fixedKey = subKey.replace("posion", "poison");
-      stats.status[fixedKey] = val;
-    }
-    // 3. 일반 스탯
-    else {
-      stats[cleanKey] = val;
-    }
-  });
-
-  return stats;
-};
-
-const transformLevelDB = (rows) => {
-  const result = {};
-  if (!Array.isArray(rows)) return result;
-
-  rows.forEach((row) => {
-    const key = (row.type || row.slot || row.group || row.Group || "").trim();
-    if (!key) return;
-
-    if (!result[key]) result[key] = {};
-    const stats = extractStats(row);
-    result[key][row.level] = stats;
-  });
-  return result;
 };
 
 // ---------------------------------------------------------
@@ -459,46 +342,4 @@ export const loadGameData = async () => {
     console.error("❌ [System] 데이터 로드 실패:", error);
     return false;
   }
-};
-
-// ---------------------------------------------------------
-// [4] 이미지/아이콘 헬퍼
-// ---------------------------------------------------------
-const IMAGE_BASE_URL =
-  "https://raw.githubusercontent.com/tigerexist1528/modam-assets/main/images";
-
-const PLACEHOLDER_IMG = `${IMAGE_BASE_URL}/MODAM.png`;
-
-const SLOT_FOLDER_MAP = {
-  무기: "weapon",
-  머리어깨: "headshoulder",
-  상의: "top",
-  하의: "bottom",
-  벨트: "belt",
-  신발: "shoes",
-  팔찌: "bracelet",
-  목걸이: "necklace",
-  반지: "ring",
-  보조장비: "sub",
-  마법석: "magestone",
-  귀걸이: "earring",
-  오라: "aura",
-  칭호: "title",
-  크리쳐: "creature",
-  아티팩트: "artifact",
-};
-
-export const GET_ITEM_ICON = (name, slot) => {
-  if (!name || !slot) return PLACEHOLDER_IMG;
-  let cleanName = name;
-  if (slot !== "무기" && name.includes(":")) {
-    cleanName = name.split(":")[1].trim();
-  }
-  const folder = SLOT_FOLDER_MAP[slot] || "etc";
-  return `${IMAGE_BASE_URL}/items/${folder}/${cleanName}.png`;
-};
-
-export const GET_JOB_ICON = (type, name) => {
-  if (!type || !name) return PLACEHOLDER_IMG;
-  return `${IMAGE_BASE_URL}/characters/${type}/${name}.png`;
 };
