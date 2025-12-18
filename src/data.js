@@ -1,9 +1,10 @@
+import { supabase } from "./utils/supabaseClient";
 import { createClient } from "@supabase/supabase-js";
 
-import { 
-  extractStats, 
+import {
+  extractStats,
   transformLevelDB,
-  EMBLEM_RULES // 엠블렘 규칙도 가져옵니다.
+  EMBLEM_RULES, // 엠블렘 규칙도 가져옵니다.
 } from "./utils/data";
 
 // ---------------------------------------------------------
