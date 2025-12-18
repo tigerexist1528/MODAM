@@ -3,7 +3,7 @@ import ReactQuill from "react-quill"; // ★ 오리지널 버전 사용
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
 
-const BoardPage = ({ setActivePage, userStats }) => {
+const BoardPage = ({ setActivePage, userStats, category }) => {
   const [view, setView] = useState("LIST");
   const [posts, setPosts] = useState([]);
   const [currentPost, setCurrentPost] = useState(null);
