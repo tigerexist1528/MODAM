@@ -3092,11 +3092,34 @@ export default function App() {
 
         <div className="auth-buttons">
           {session ? (
-            // 로그인 상태일 때
-            <button onClick={handleLogout}>로그아웃</button>
+            // ★ 로그인 상태일 때: [프사 + 이름] 그리고 [로그아웃 버튼] 보여주기
+            <div className="user-info-area">
+              {/* 1. 프로필 정보 묶음 */}
+              <div className="user-profile">
+                {/* 프로필 사진 (없으면 기본 이미지) */}
+                <img
+                  src={
+                    session.user.user_metadata?.avatar_url ||
+                    "https://via.placeholder.com/40/555555/ffffff?text=U"
+                  }
+                  alt="프로필"
+                  className="user-avatar"
+                />
+                {/* 닉네임 (없으면 이메일 앞부분 표시) */}
+                <span className="user-name">
+                  {session.user.user_metadata?.full_name ||
+                    session.user.email?.split("@")[0] ||
+                    "모험가"}
+                </span>
+              </div>
+
+              {/* 2. 스타일 적용된 로그아웃 버튼 */}
+              <button className="logout-btn" onClick={handleLogout}>
+                로그아웃
+              </button>
+            </div>
           ) : (
-            // ★ 3. 비로그인 상태: 버튼 하나로 통합!
-            // 이 버튼을 누르면 모달 창 스위치를 켭니다(true)
+            // 비로그인 상태일 때 (아까 만든 예쁜 버튼)
             <button
               className="main-login-btn"
               onClick={() => setIsLoginModalOpen(true)}
