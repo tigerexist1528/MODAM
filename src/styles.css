@@ -134,7 +134,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  alignitems: center;
+  align-items: center;
   min-width: 400px;
   max-width: 600px;
   position: relative;
@@ -1813,6 +1813,7 @@ body {
 .custom-range {
   flex: 1;
   -webkit-appearance: none;
+  appearance: none;
   background: transparent;
   height: 8px;
   cursor: pointer;
@@ -1845,11 +1846,14 @@ body {
     justify-content: center; /* 중앙 정렬 */
   }
 
-  flex-direction: column !important;
-  position: static;
-  width: 100%;
-  margin-top: 0;
-  justify-content: flex-start;
+  /* 👇 [범인 검거] 여기가 지워졌었습니다! 다시 넣어주세요. */
+  .left-sidebar {
+    flex-direction: column !important;
+    position: static;
+    width: 100%;
+    margin-top: 0;
+    justify-content: flex-start;
+  } /* 👈 닫는 괄호도 꼭 챙겨주세요 */
 }
 
 .naesil-btn {
@@ -2451,6 +2455,7 @@ body {
   margin-bottom: 10px;
   background: linear-gradient(135deg, #fff 30%, var(--text-gold) 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
   letter-spacing: -2px;
