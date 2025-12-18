@@ -94,7 +94,7 @@ const Home = ({ setActivePage }) => {
           <div
             className="section-more"
             onClick={() =>
-              window.open("https://dnfm.nexon.com/Event", "_blank")
+              window.open("https://dnfm.nexon.com/News/Event", "_blank")
             }
           >
             공식 홈페이지 바로가기 &gt;
