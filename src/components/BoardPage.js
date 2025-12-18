@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import ReactQuill from "react-quill"; // ★ 오리지널 버전 사용
+import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
 
