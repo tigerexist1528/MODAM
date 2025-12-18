@@ -177,7 +177,7 @@ export default function App() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // 프로필 수정창
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // 최초 설정 여부
-  const [activeMenu, setActiveMenu] = useState("CALC");
+  const [activeMenu, setActiveMenu] = useState("HOME");
   const [activeBoardTab, setActiveBoardTab] = useState("FREE");
   const [systemModal, setSystemModal] = useState({
     type: null,
@@ -3117,7 +3117,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: "30px" }}>
           <div
             className="logo-area"
-            onClick={() => setActiveMenu("CALC")} // 로고 누르면 계산기로 복귀
+            onClick={() => setActiveMenu("HOME")} // 로고 누르면 계산기로 복귀
             style={{
               fontSize: "1.2rem",
               fontWeight: "bold",
@@ -3204,6 +3204,7 @@ export default function App() {
       {/* [4] 메인 컨텐츠 영역 (ActiveMenu에 따라 변경) */}
       {/* ========================================= */}
       <main>
+        {activeMenu === "HOME" && <Home setActivePage={setActiveMenu} />}
         {/* A. 게시판 화면 */}
         {activeMenu === "BOARD" && (
           <>
