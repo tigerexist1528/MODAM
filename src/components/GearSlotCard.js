@@ -41,8 +41,8 @@ const GearSlotCard = ({
   let iconUrl = null,
     gradeClass = "",
     displayName = "",
-    nameColor = "#888";
-  prefixIconUrl = null; // ★ 접두사 아이콘 변수
+    nameColor = "#888",
+    prefixIconUrl = null; // ★ 접두사 아이콘 변수
 
   let targetItem = null;
 
