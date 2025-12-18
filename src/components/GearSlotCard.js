@@ -2,19 +2,15 @@ import React from "react";
 
 // 1. [DB 데이터] src/data.js 에 있는 친구들
 // (아이템 DB, 마부 데이터, 아이콘 함수 등)
-import {
-  WEAPON_DB,
-  GEAR_DB,
-  MAGIC_OPTS_BY_GROUP,
-  EMBLEM_RULES,
-  GET_ITEM_ICON,
-  PLACEHOLDER_IMG,
-} from "../data";
+import { WEAPON_DB, GEAR_DB, MAGIC_OPTS_BY_GROUP } from "../data";
 
 // 2. [유틸/상수] src/utils/data.js 에 있는 친구들
 // (이미지 경로, 슬롯 이름, 등급 색상, 타입 상수 등)
 import {
   IMAGE_BASE_URL,
+  GET_ITEM_ICON_LOCAL,
+  EMBLEM_RULES,
+  PLACEHOLDER_IMG,
   SLOT_ENG_NAMES,
   getGradeColor,
   WEAPON_TYPES,

@@ -1,16 +1,15 @@
 import { useEffect } from "react";
 
 // 1. DB 및 리소스 (src/data.js)
-import {
-  WEAPON_DB,
-  GEAR_DB,
-  GET_ITEM_ICON,
-  GET_JOB_ICON,
-  PLACEHOLDER_IMG,
-} from "../data";
+import { WEAPON_DB, GEAR_DB } from "../data";
 
 // 2. 유틸 데이터 (src/utils/data.js)
-import { JOB_STRUCTURE } from "../utils/data";
+import {
+  JOB_STRUCTURE,
+  GET_ITEM_ICON_LOCAL,
+  GET_JOB_ICON,
+  PLACEHOLDER_IMG,
+} from "../utils/data";
 
 export const useImagePreloader = () => {
   useEffect(() => {

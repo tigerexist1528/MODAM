@@ -1,10 +1,14 @@
 import React, { useState } from "react";
 
 // 1. DB 데이터
-import { SKILL_RUNE_DB, PLACEHOLDER_IMG } from "../../data";
+import { SKILL_RUNE_DB } from "../../data";
 
 // 2. 유틸/상수
-import { IMAGE_BASE_URL, formatStatsToKor } from "../../utils/data";
+import {
+  IMAGE_BASE_URL,
+  PLACEHOLDER_IMG,
+  formatStatsToKor,
+} from "../../utils/data";
 
 const SkillRuneModal = ({
   userStats,

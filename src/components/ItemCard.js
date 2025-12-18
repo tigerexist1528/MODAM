@@ -1,10 +1,11 @@
 import React from "react";
 
-// 1. [리소스] src/data.js 에 있는 친구들 (이미지 등)
-import { PLACEHOLDER_IMG } from "../data";
-
-// 2. [유틸/함수] src/utils/data.js 에 있는 친구들 (로직)
-import { GET_ITEM_ICON_LOCAL, getGradeColor } from "../utils/data";
+// [유틸/함수] src/utils/data.js 에 있는 친구들 (로직)
+import {
+  PLACEHOLDER_IMG,
+  GET_ITEM_ICON_LOCAL,
+  getGradeColor,
+} from "../utils/data";
 
 // =========================================================
 // [최적화] ItemCard 컴포넌트 분리 & Memoization

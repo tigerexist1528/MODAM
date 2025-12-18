@@ -24,9 +24,6 @@ import {
   WEAPON_AVATAR_DB,
   SKILL_RUNE_DB,
   GEAR_POINT_BONUS_DB,
-
-  // 3. 유틸리티 및 리소스
-  JOB_ILLUST,
 } from "./data";
 
 // utils/data에서 필요한 데이터를 가져옵니다.

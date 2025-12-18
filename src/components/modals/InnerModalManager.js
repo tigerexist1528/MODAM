@@ -13,19 +13,19 @@ import {
   POLISH_DB,
   MAGIC_OPTS_BY_GROUP,
   ENCHANT_LIST_BY_SLOT,
-  EMBLEM_RULES,
   EMBLEM_DB,
   TRAINING_DB,
   AVATAR_DB,
   WEAPON_AVATAR_DB,
-  GET_JOB_ICON,
-  PLACEHOLDER_IMG,
 } from "../../data";
 
 // 3. 유틸/상수 Import (utils/data.js) - ★ 수정됨: 순수 유틸만 남김
 import {
   IMAGE_BASE_URL,
+  GET_JOB_ICON,
+  PLACEHOLDER_IMG,
   JOB_STRUCTURE,
+  EMBLEM_RULES,
   formatStatsToKor,
   getAvatarSummary,
   getMergedSealText,

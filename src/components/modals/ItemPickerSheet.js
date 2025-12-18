@@ -6,13 +6,13 @@ import {
   GEAR_DB,
   SKILL_RUNE_DB, // 룬 DB
   RUNE_CONSTANTS, // 룬 상수
-  GET_ITEM_ICON,
-  PLACEHOLDER_IMG,
 } from "../../data";
 
 // 2. 유틸/상수 (src/utils/data.js)
 import {
   IMAGE_BASE_URL,
+  GET_ITEM_ICON,
+  PLACEHOLDER_IMG,
   WEAPON_TYPES,
   EXCEED_SLOTS,
   getGradeColor,

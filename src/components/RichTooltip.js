@@ -1,8 +1,10 @@
 import React from "react";
 
-import { PLACEHOLDER_IMG, GEAR_DB, GET_ITEM_ICON } from "../data";
+import { GEAR_DB } from "../data";
 
 import {
+  GET_ITEM_ICON_LOCAL,
+  PLACEHOLDER_IMG,
   getGradeColor,
   formatStatsToKor,
   getPrefixIconUrl,
