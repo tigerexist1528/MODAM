@@ -245,6 +245,25 @@ export default function App() {
     }
   }, [loadSharedPreset]); // 공유 링크 로드 함수가 바뀔 때마다 실행
 
+  const checkUserProfile = async (userId) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle(); // 에러 방지용 maybeSingle()
+
+    if (error && error.code !== "PGRST116") {
+      console.error("프로필 확인 에러:", error);
+      return;
+    }
+
+    if (data) {
+      setUserProfile(data);
+    } else {
+      setIsFirstTimeSetup(true);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setSession(null);
