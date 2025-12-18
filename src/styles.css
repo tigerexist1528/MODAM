@@ -253,6 +253,7 @@ body {
   /* Flex 아이템으로서 줄어들지 않게 함 */
   flex-shrink: 0;
   transition: border-color 0.2s, transform 0.2s;
+  /* Vercel아 제발 정신차려 */
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
 }
 
