@@ -1,7 +1,7 @@
 // src/components/LoginModal.js
 import React from "react";
 import { supabase } from "../utils/supabaseClient";
-import "../style.css"; // 스타일 파일 (아래에서 추가할 예정)
+import "../styles.css"; // 스타일 파일 (아래에서 추가할 예정)
 
 const LoginModal = ({ onClose }) => {
   // 로그인 처리 함수
