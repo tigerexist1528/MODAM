@@ -182,7 +182,7 @@ const ItemPickerSheet = ({
                     <div key={baseItem.id} className="item-card">
                       <div className="card-thumb">
                         <img
-                          src={GET_ITEM_ICON(baseItem.name, slot)}
+                          src={GET_ITEM_ICON_LOCAL(baseItem.name, slot)}
                           alt=""
                           onError={(e) => {
                             e.target.onerror = null;
@@ -365,7 +365,7 @@ const ItemPickerSheet = ({
                       >
                         <div className="card-thumb">
                           <img
-                            src={GET_ITEM_ICON(item.name, slot)}
+                            src={GET_ITEM_ICON_LOCAL(item.name, slot)}
                             alt=""
                             onError={(e) => {
                               e.target.onerror = null;
@@ -410,7 +410,7 @@ const ItemPickerSheet = ({
                       >
                         <div className="card-thumb">
                           <img
-                            src={GET_ITEM_ICON(repItem.name, slot)}
+                            src={GET_ITEM_ICON_LOCAL(repItem.name, slot)}
                             alt=""
                             onError={(e) => {
                               e.target.onerror = null;
@@ -481,7 +481,7 @@ const ItemPickerSheet = ({
                     >
                       <div className="card-thumb">
                         <img
-                          src={GET_ITEM_ICON(item.name, slot)}
+                          src={GET_ITEM_ICON_LOCAL(item.name, slot)}
                           alt=""
                           onError={(e) => {
                             e.target.onerror = null;

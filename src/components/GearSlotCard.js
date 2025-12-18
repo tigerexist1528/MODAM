@@ -51,7 +51,7 @@ const GearSlotCard = ({
     const item = db.find((i) => i.id === eq.itemId);
     if (item) {
       targetItem = item;
-      iconUrl = GET_ITEM_ICON(item.name, slot);
+      iconUrl = GET_ITEM_ICON_LOCAL(item.name, slot);
       prefixIconUrl = getPrefixIconUrl(item.name);
       if (item.grade.includes("익시드")) gradeClass = "grade-exceed";
       else if (item.grade.includes("에픽")) gradeClass = "grade-epic";

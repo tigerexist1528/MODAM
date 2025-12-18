@@ -51,7 +51,7 @@ export const useImagePreloader = () => {
         const chunk = allItems.slice(index, index + CHUNK_SIZE);
         chunk.forEach((item) => {
           const slotFolder = item.slot || "weapon";
-          const src = GET_ITEM_ICON(item.name, slotFolder);
+          const src = GET_ITEM_ICON_LOCAL(item.name, slotFolder);
           // 이미지 객체만 생성해두면 브라우저가 캐싱함 (await 안 함)
           new Image().src = src;
         });

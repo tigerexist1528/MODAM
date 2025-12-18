@@ -202,7 +202,7 @@ const RichTooltip = ({ tooltipData, activeSets }) => {
                   }}
                 >
                   <img
-                    src={GET_ITEM_ICON(item.name, slot)}
+                    src={GET_ITEM_ICON_LOCAL(item.name, slot)}
                     alt=""
                     onError={(e) => (e.target.src = PLACEHOLDER_IMG)}
                   />
