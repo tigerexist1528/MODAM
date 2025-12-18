@@ -55,6 +55,7 @@ import {
 
 // components에서 필요한 데이터를 가져옵니다.
 import Home from "./components/Home";
+import LoginModal from "./components/LoginModal";
 import NoticePage from "./components/NoticePage";
 import BoardPage from "./components/BoardPage";
 import PresetBar from "./components/PresetBar";
@@ -170,6 +171,7 @@ export default function App() {
   // =================================================================================
   // 1. 상태 선언 (가장 먼저)
   const [session, setSession] = useState(null);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [systemModal, setSystemModal] = useState({
     type: null,
     message: "",
@@ -230,28 +232,10 @@ export default function App() {
     }
   }, [loadSharedPreset]); // 공유 링크 로드 함수가 바뀔 때마다 실행
 
-  // [App.js] 로그인 핸들러 (제공업체 선택 가능)
-  const handleLogin = async (provider) => {
-    // provider: 'google' 또는 'kakao'
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: provider,
-      options: {
-        // CodeSandbox 미리보기 주소 (로그인 끝나면 돌아올 곳)
-        redirectTo: window.location.origin,
-      },
-    });
-
-    if (error) alert("로그인 에러: " + error.message);
-  };
-
-  // 로그아웃 함수
   const handleLogout = async () => {
-    // 1. Supabase 로그아웃 요청
     await supabase.auth.signOut();
-
-    // 2. 상태 초기화
     setSession(null);
-    setPresetList([]); // 불러왔던 남의 프리셋도 싹 비워줍니다 (보안)
+    // setPresetList([]); // 필요하시면 유지
     alert("로그아웃 되었습니다.");
   };
 
@@ -3106,90 +3090,14 @@ export default function App() {
           {/* ... (기존 메뉴들) ... */}
         </div>
 
-        {/* ★ [NEW] 우측 상단 로그인 & 프리셋 버튼 영역 */}
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          {/* 로그인 상태에 따른 버튼 분기 */}
+        <div className="auth-buttons">
           {session ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              {/* 프로필 사진 */}
-              {session.user.user_metadata.avatar_url ? (
-                <img
-                  src={session.user.user_metadata.avatar_url}
-                  alt="프로필"
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    border: "1px solid #555",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: "32px",
-                    height: "32px",
-                    borderRadius: "50%",
-                    background: "#444",
-                  }}
-                ></div>
-              )}
-              <button
-                onClick={handleLogout}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#888",
-                  cursor: "pointer",
-                  fontSize: "0.85rem",
-                  textDecoration: "underline",
-                }}
-              >
-                로그아웃
-              </button>
-            </div>
+            // 로그인 상태일 때
+            <button onClick={handleLogout}>로그아웃</button>
           ) : (
-            // 로그인 안 했을 때 (버튼 2개)
-            <div style={{ display: "flex", gap: "5px" }}>
-              {/* 카카오 로그인 */}
-              <button
-                onClick={() => handleLogin("kakao")}
-                style={{
-                  background: "#FEE500",
-                  color: "#000",
-                  border: "none",
-                  padding: "6px 10px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  fontSize: "0.8rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                <span style={{ fontSize: "1rem" }}>💬</span> 카카오
-              </button>
-
-              {/* 구글 로그인 */}
-              <button
-                onClick={() => handleLogin("google")}
-                style={{
-                  background: "#fff",
-                  color: "#000",
-                  border: "none",
-                  padding: "6px 10px",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                  fontWeight: "bold",
-                  fontSize: "0.8rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                }}
-              >
-                <span style={{ fontSize: "1rem" }}>G</span> 구글
-              </button>
-            </div>
+            // ★ 3. 비로그인 상태: 버튼 하나로 통합!
+            // 이 버튼을 누르면 모달 창 스위치를 켭니다(true)
+            <button onClick={() => setIsLoginModalOpen(true)}>로그인</button>
           )}
         </div>
       </header>
@@ -3297,6 +3205,9 @@ export default function App() {
           <BoardPage setActivePage={setActivePage} userStats={userStats} />
         )}
       </main>
+      {isLoginModalOpen && (
+        <LoginModal onClose={() => setIsLoginModalOpen(false)} />
+      )}
     </div>
   );
 }
