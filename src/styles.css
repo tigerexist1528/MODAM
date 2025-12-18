@@ -3386,3 +3386,102 @@ body {
   line-height: 1.5;
   color: #8a7b66; /* 양피지 글씨색 느낌 */
 }
+
+/* src/App.css */
+
+/* 1. 모달 뒷배경 (어둡게 처리) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6); /* 반투명 검정 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px); /* 배경 살짝 블러 효과 */
+}
+
+/* 2. 모달 박스 */
+.modal-content {
+  background: #2a2a2a; /* 어두운 테마 배경 */
+  color: white;
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  position: relative;
+  border: 1px solid #444;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* 3. 닫기 버튼 (X) */
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #aaa;
+  cursor: pointer;
+}
+.close-btn:hover {
+  color: white;
+}
+
+/* 4. 로그인 버튼들 스타일 */
+.login-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.login-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.login-btn:hover {
+  opacity: 0.9;
+}
+.login-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+/* 카카오톡 노란색 */
+.login-btn.kakao {
+  background-color: #fee500;
+  color: #000;
+}
+
+/* 구글 흰색 */
+.login-btn.google {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+/* 헤더에 있는 메인 로그인 버튼 */
+.main-login-btn {
+  background: #4a90e2;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
