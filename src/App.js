@@ -56,6 +56,7 @@ import {
 // components에서 필요한 데이터를 가져옵니다.
 import Home from "./components/Home";
 import LoginModal from "./components/LoginModal";
+import ProfileModal from "./components/ProfileModal";
 import MessageModal from "./components/MessageModal";
 import NoticePage from "./components/NoticePage";
 import BoardPage from "./components/BoardPage";
@@ -172,8 +173,11 @@ export default function App() {
   // =================================================================================
   // 1. 상태 선언 (가장 먼저)
   const [session, setSession] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // 프로필 수정창
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // 최초 설정 여부
   const [systemModal, setSystemModal] = useState({
     type: null,
     message: "",
@@ -206,24 +210,31 @@ export default function App() {
     setSystemModal
   );
 
-  // 4. useEffect (인증 로직 등)
+  // 4. useEffect (인증 로직 + 프로필 체크)
   useEffect(() => {
-    // 세션 체크
+    // A. 초기 접속 시 세션 체크
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      fetchPresets(session);
+      fetchPresets(session); // (기존 기능 유지)
+      if (session) checkUserProfile(session.user.id); // ★ (추가) 닉네임 확인
     });
 
-    // 상태 변화 감지
+    // B. 로그인/로그아웃 상태 변화 감지
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      fetchPresets(session);
+      fetchPresets(session); // (기존 기능 유지)
+
+      if (session) {
+        checkUserProfile(session.user.id); // ★ (추가) 로그인하면 닉네임 확인
+      } else {
+        setUserProfile(null); // ★ (추가) 로그아웃하면 닉네임 비우기
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchPresets]); // fetchPresets 의존성 추가
+  }, [fetchPresets]);
 
   // 4-2. 공유 링크 감지 로직 (독립된 훅으로 분리)
   useEffect(() => {
@@ -3089,39 +3100,36 @@ export default function App() {
           >
             <span style={{ color: "#ffcc00" }}>MODAM</span> CALCULATOR
           </div>
-          {/* ... (기존 메뉴들) ... */}
         </div>
 
         <div className="auth-buttons">
           {session ? (
-            // ★ 로그인 상태일 때: [프사 + 이름] 그리고 [로그아웃 버튼] 보여주기
             <div className="user-info-area">
-              {/* 1. 프로필 정보 묶음 */}
-              <div className="user-profile">
-                {/* 프로필 사진 (없으면 기본 이미지) */}
+              {/* 프로필 클릭하면 수정창 열림 */}
+              <div
+                className="user-profile"
+                onClick={() => setIsProfileModalOpen(true)}
+                style={{ cursor: "pointer" }}
+              >
+                {/* 프사 */}
                 <img
                   src={
                     session.user.user_metadata?.avatar_url ||
-                    "https://via.placeholder.com/40/555555/ffffff?text=U"
+                    "https://via.placeholder.com/40"
                   }
-                  alt="프로필"
+                  alt="profile"
                   className="user-avatar"
                 />
-                {/* 닉네임 (없으면 이메일 앞부분 표시) */}
+                {/* 닉네임 (DB에 있으면 그거, 없으면 모험가) */}
                 <span className="user-name">
-                  {session.user.user_metadata?.full_name ||
-                    session.user.email?.split("@")[0] ||
-                    "모험가"}
+                  {userProfile ? userProfile.nickname : "모험가"}
                 </span>
               </div>
-
-              {/* 2. 스타일 적용된 로그아웃 버튼 */}
               <button className="logout-btn" onClick={handleLogout}>
                 로그아웃
               </button>
             </div>
           ) : (
-            // 비로그인 상태일 때 (아까 만든 예쁜 버튼)
             <button
               className="main-login-btn"
               onClick={() => setIsLoginModalOpen(true)}

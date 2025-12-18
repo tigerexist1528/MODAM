@@ -3580,3 +3580,21 @@ body {
 .modal-confirm-btn:hover {
   background: #357abd; /* 마우스 올리면 진해짐 */
 }
+
+/* 닉네임 입력창 */
+.nickname-input {
+  width: 100%;
+  padding: 12px;
+  background: #333;
+  border: 1px solid #555;
+  border-radius: 6px;
+  color: white;
+  font-size: 16px;
+  margin-top: 5px;
+  box-sizing: border-box; /* 패딩 포함 크기 계산 */
+}
+
+.nickname-input:focus {
+  outline: none;
+  border-color: #4a90e2; /* 포커스 시 파란색 */
+}
