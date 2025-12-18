@@ -3,7 +3,7 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
 
-const BoardPage = ({ setActivePage, userStats }) => {
+const BoardPage = ({ setActivePage, userStats, category }) => {
   const [view, setView] = useState("LIST");
   const [posts, setPosts] = useState([]);
   const [currentPost, setCurrentPost] = useState(null);
@@ -25,15 +25,29 @@ const BoardPage = ({ setActivePage, userStats }) => {
       .getSession()
       .then(({ data: { session } }) => setSession(session));
     fetchPosts();
-  }, []);
+  }, [category]);
 
   // --- [API] 기본 기능 ---
   const fetchPosts = async () => {
-    const { data, error } = await supabase
-      .from("posts")
-      .select("*, post_votes(vote_type)")
-      .order("created_at", { ascending: false });
-    if (!error) setPosts(data);
+    try {
+      let query = supabase
+        .from("posts")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      // ★ 카테고리가 'NOTICE'(공지)가 아니면, 해당 카테고리만 필터링
+      // (공지사항 페이지는 따로 만들지 않고, category='NOTICE'로 처리하거나
+      //  별도 컴포넌트로 분리해도 되지만, 여기선 통합해서 처리합니다.)
+      if (category) {
+        query = query.eq("category", category);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setPosts(data);
+    } catch (error) {
+      console.error("Error fetching posts:", error);
+    }
   };
 
   const fetchPostDetail = async (post) => {
@@ -119,6 +133,7 @@ const BoardPage = ({ setActivePage, userStats }) => {
           content: form.content,
           user_id: session.user.id,
           nickname: userStats.character.nickname || "모험가",
+          category: category, // 👈 ★ 이 줄을 꼭 추가해주세요!
         },
       ]);
 
@@ -273,7 +288,10 @@ const BoardPage = ({ setActivePage, userStats }) => {
           style={{ fontSize: "1.8rem", margin: 0, cursor: "pointer" }}
           onClick={() => setView("LIST")}
         >
-          📝 공략 게시판
+          {category === "NOTICE" && "📢 공지사항"}
+          {category === "GUIDE" && "📘 공략 게시판"}
+          {category === "FREE" && "💬 자유 게시판"}
+          {!category && "📝 게시판"} {/* 카테고리가 없을 때 기본값 */}
         </h2>
         <div style={{ display: "flex", gap: "10px" }}>
           <button

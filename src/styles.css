@@ -3598,3 +3598,85 @@ body {
   outline: none;
   border-color: #4a90e2; /* 포커스 시 파란색 */
 }
+
+/* =========================== */
+/* ★ 네비게이션 스타일 (GNB & LNB) ★ */
+/* =========================== */
+
+/* 1. GNB (최상단 메뉴) */
+.gnb {
+  background-color: #111; /* 아주 어두운 배경 */
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid #333;
+}
+
+.gnb button {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 15px 20px;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.gnb button:hover {
+  color: #fff;
+}
+
+.gnb button.active {
+  color: #4a90e2; /* 선택된 메뉴 색상 (파랑) */
+}
+.gnb button.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: #4a90e2; /* 하단 파란 줄 */
+}
+
+/* 2. LNB (2-Depth 메뉴) */
+.lnb-container {
+  background-color: #1a1a1a; /* GNB보다 살짝 밝게 */
+  border-bottom: 1px solid #333;
+  margin-bottom: 20px;
+}
+
+.lnb-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  gap: 20px;
+  padding: 0 20px;
+}
+
+.lnb-tab {
+  background: none;
+  border: none;
+  padding: 15px 10px;
+  color: #888;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.lnb-tab.active {
+  color: #fff;
+  border-bottom: 2px solid #fff; /* 하단 흰색 줄 */
+}
+
+/* 준비 중 화면 */
+.coming-soon {
+  text-align: center;
+  padding: 100px 0;
+  color: #666;
+  font-size: 20px;
+  font-weight: bold;
+}
