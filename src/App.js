@@ -58,7 +58,6 @@ import Home from "./components/Home";
 import LoginModal from "./components/LoginModal";
 import ProfileModal from "./components/ProfileModal";
 import MessageModal from "./components/MessageModal";
-import NoticePage from "./components/NoticePage";
 import BoardPage from "./components/BoardPage";
 import PresetBar from "./components/PresetBar";
 import SkillAnalysisPage from "./components/SkillAnalysisPage";
@@ -178,6 +177,8 @@ export default function App() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // 프로필 수정창
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // 최초 설정 여부
+  const [activeMenu, setActiveMenu] = useState("CALC");
+  const [activeBoardTab, setActiveBoardTab] = useState("FREE");
   const [systemModal, setSystemModal] = useState({
     type: null,
     message: "",
@@ -2972,10 +2973,13 @@ export default function App() {
       }}
       onMouseMove={handleItemMouseMove}
     >
-      {/* 1. 툴팁 컴포넌트 (renderRichTooltip 대체) */}
+      {/* ========================================= */}
+      {/* [1] 전역 모달 및 툴팁 영역 (기존 코드 유지) */}
+      {/* ========================================= */}
       <RichTooltip tooltipData={tooltipData} activeSets={activeSets} />
+      {renderSimpleTooltip()}
 
-      {/* 2. 아이템 선택창 컴포넌트 */}
+      {/* 아이템 피커 모달 */}
       {activeModal.type && (
         <ItemPickerSheet
           activeModal={activeModal}
@@ -3002,8 +3006,7 @@ export default function App() {
         />
       )}
 
-      {/* 3. 나머지 모달들 (여전히 App.js에 남아있는 renderInnerModal 등) */}
-      {renderSimpleTooltip()}
+      {/* 내부 설정 모달들 */}
       <InnerModalManager
         activeModal={activeModal}
         setActiveModal={setActiveModal}
@@ -3015,7 +3018,8 @@ export default function App() {
         finalStats={finalStats}
       />
       {renderUnequipConfirmModal()}
-      {/* ★ [누락된 부분] 상세 내역 모달 렌더링 (여기에 추가해주세요!) */}
+
+      {/* 상세 스탯 모달 */}
       {statDetailModal && (
         <div
           className="item-picker-modal"
@@ -3094,7 +3098,10 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* 2. GNB (Global Navigation Bar) */}
+
+      {/* ========================================= */}
+      {/* [2] 헤더 영역 (로고 클릭 시 계산기로)      */}
+      {/* ========================================= */}
       <header
         className="site-header"
         style={{
@@ -3110,7 +3117,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: "30px" }}>
           <div
             className="logo-area"
-            onClick={() => setActivePage("HOME")}
+            onClick={() => setActiveMenu("CALC")} // 로고 누르면 계산기로 복귀
             style={{
               fontSize: "1.2rem",
               fontWeight: "bold",
@@ -3121,16 +3128,15 @@ export default function App() {
           </div>
         </div>
 
+        {/* 로그인/프로필 버튼 영역 */}
         <div className="auth-buttons">
           {session ? (
             <div className="user-info-area">
-              {/* 프로필 클릭하면 수정창 열림 */}
               <div
                 className="user-profile"
                 onClick={() => setIsProfileModalOpen(true)}
                 style={{ cursor: "pointer" }}
               >
-                {/* 프사 */}
                 <img
                   src={
                     session.user.user_metadata?.avatar_url ||
@@ -3139,7 +3145,6 @@ export default function App() {
                   alt="profile"
                   className="user-avatar"
                 />
-                {/* 닉네임 (DB에 있으면 그거, 없으면 모험가) */}
                 <span className="user-name">
                   {userProfile ? userProfile.nickname : "모험가"}
                 </span>
@@ -3158,45 +3163,96 @@ export default function App() {
           )}
         </div>
       </header>
-      <main>
-        {/* 1. 홈 화면 */}
-        {activePage === "HOME" && <Home setActivePage={setActivePage} />}
 
-        {/* 2. 데미지 계산기 화면 (CALC일 때만 진입) */}
-        {activePage === "CALC" && (
+      {/* ========================================= */}
+      {/* [3] GNB (Global Navigation Bar) - 메인 메뉴 */}
+      {/* ========================================= */}
+      <nav className="gnb">
+        <button
+          className={activeMenu === "BOARD" ? "active" : ""}
+          onClick={() => setActiveMenu("BOARD")}
+        >
+          게시판
+        </button>
+        <button
+          className={activeMenu === "CALC" ? "active" : ""}
+          onClick={() => setActiveMenu("CALC")}
+        >
+          데미지 계산기
+        </button>
+        <button
+          className={activeMenu === "SIM" ? "active" : ""}
+          onClick={() => setActiveMenu("SIM")}
+        >
+          시뮬레이터
+        </button>
+        <button
+          className={activeMenu === "RANK" ? "active" : ""}
+          onClick={() => setActiveMenu("RANK")}
+        >
+          직업 랭킹
+        </button>
+        <button
+          className={activeMenu === "GAME" ? "active" : ""}
+          onClick={() => setActiveMenu("GAME")}
+        >
+          미니 게임
+        </button>
+      </nav>
+
+      {/* ========================================= */}
+      {/* [4] 메인 컨텐츠 영역 (ActiveMenu에 따라 변경) */}
+      {/* ========================================= */}
+      <main>
+        {/* A. 게시판 화면 */}
+        {activeMenu === "BOARD" && (
           <>
-            {/* [LNB] 상단 2-Depth 탭 메뉴 (메인 / 스킬 분석) */}
-            <nav
-              className="lnb-container"
-              style={{
-                background: "#1a1a1a",
-                borderBottom: "1px solid #333",
-                padding: "0 20px",
-              }}
-            >
-              <div
-                style={{
-                  maxWidth: "1200px",
-                  margin: "0 auto",
-                  display: "flex",
-                  gap: "30px",
-                }}
-              >
+            {/* 게시판용 LNB (2-Depth) */}
+            <div className="lnb-container">
+              <div className="lnb-inner">
+                <button
+                  className={`lnb-tab ${
+                    activeBoardTab === "NOTICE" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveBoardTab("NOTICE")}
+                >
+                  공지사항
+                </button>
+                <button
+                  className={`lnb-tab ${
+                    activeBoardTab === "GUIDE" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveBoardTab("GUIDE")}
+                >
+                  공략 게시판
+                </button>
+                <button
+                  className={`lnb-tab ${
+                    activeBoardTab === "FREE" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveBoardTab("FREE")}
+                >
+                  자유게시판
+                </button>
+              </div>
+            </div>
+
+            {/* 게시판 컨텐츠 (category만 바꿔서 재사용) */}
+            <BoardPage
+              userStats={userProfile} // userStats prop으로 프로필 정보 전달
+              category={activeBoardTab} // 현재 탭(NOTICE, GUIDE, FREE) 전달
+            />
+          </>
+        )}
+
+        {/* B. 데미지 계산기 화면 */}
+        {activeMenu === "CALC" && (
+          <>
+            {/* 계산기용 LNB (2-Depth) */}
+            <nav className="lnb-container">
+              <div className="lnb-inner">
                 <button
                   className={`lnb-tab ${activeTab === "MAIN" ? "active" : ""}`}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: "15px 5px",
-                    color: activeTab === "MAIN" ? "#fff" : "#888",
-                    borderBottom:
-                      activeTab === "MAIN"
-                        ? "3px solid var(--text-gold)"
-                        : "3px solid transparent",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                  }}
                   onClick={() => setActiveTab("MAIN")}
                 >
                   메인
@@ -3205,19 +3261,6 @@ export default function App() {
                   className={`lnb-tab ${
                     activeTab === "ANALYSIS" ? "active" : ""
                   }`}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: "15px 5px",
-                    color: activeTab === "ANALYSIS" ? "#fff" : "#888",
-                    borderBottom:
-                      activeTab === "ANALYSIS"
-                        ? "3px solid var(--text-gold)"
-                        : "3px solid transparent",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    fontSize: "1rem",
-                  }}
                   onClick={() => setActiveTab("ANALYSIS")}
                 >
                   스킬 분석
@@ -3225,6 +3268,7 @@ export default function App() {
               </div>
             </nav>
 
+            {/* 계산기 공통 요소 (프리셋바, 시스템 모달) */}
             <PresetBar
               presetList={presetList}
               currentPresetId={currentPresetId}
@@ -3242,10 +3286,11 @@ export default function App() {
               systemModal={systemModal}
               setSystemModal={setSystemModal}
             />
-            {/* 1. 메인 계산기 화면 */}
+
+            {/* 계산기 메인 로직 */}
             {activeTab === "MAIN" && renderCalculatorPage()}
 
-            {/* 2. 스킬 분석 화면 (컴포넌트 사용) */}
+            {/* 스킬 분석 로직 */}
             {activeTab === "ANALYSIS" && (
               <SkillAnalysisPage
                 analysisData={analysisData}
@@ -3255,16 +3300,26 @@ export default function App() {
             )}
           </>
         )}
-        {activePage === "NOTICE" && (
-          <NoticePage setActivePage={setActivePage} />
+
+        {/* C. 준비 중인 화면들 */}
+        {activeMenu === "SIM" && (
+          <div className="coming-soon">🚧 시뮬레이터 (준비 중)</div>
         )}
-        {activePage === "BOARD" && (
-          <BoardPage setActivePage={setActivePage} userStats={userStats} />
+        {activeMenu === "RANK" && (
+          <div className="coming-soon">🏆 직업 랭킹 (준비 중)</div>
+        )}
+        {activeMenu === "GAME" && (
+          <div className="coming-soon">🎮 미니 게임 (준비 중)</div>
         )}
       </main>
+
+      {/* ========================================= */}
+      {/* [5] 기타 팝업 모달들 (로그인, 로그아웃, 프로필) */}
+      {/* ========================================= */}
       {isLoginModalOpen && (
         <LoginModal onClose={() => setIsLoginModalOpen(false)} />
       )}
+
       {isLogoutModalOpen && (
         <MessageModal
           title="로그아웃 완료"
@@ -3272,6 +3327,7 @@ export default function App() {
           onClose={() => setIsLogoutModalOpen(false)}
         />
       )}
+
       {(isFirstTimeSetup || isProfileModalOpen) && (
         <ProfileModal
           session={session}
