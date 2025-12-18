@@ -56,6 +56,7 @@ import {
 // components에서 필요한 데이터를 가져옵니다.
 import Home from "./components/Home";
 import LoginModal from "./components/LoginModal";
+import MessageModal from "./components/MessageModal";
 import NoticePage from "./components/NoticePage";
 import BoardPage from "./components/BoardPage";
 import PresetBar from "./components/PresetBar";
@@ -172,6 +173,7 @@ export default function App() {
   // 1. 상태 선언 (가장 먼저)
   const [session, setSession] = useState(null);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [systemModal, setSystemModal] = useState({
     type: null,
     message: "",
@@ -236,7 +238,7 @@ export default function App() {
     await supabase.auth.signOut();
     setSession(null);
     // setPresetList([]); // 필요하시면 유지
-    alert("로그아웃 되었습니다.");
+    setIsLogoutModalOpen(true);
   };
 
   // --- Updater Functions ---
@@ -3235,6 +3237,13 @@ export default function App() {
       </main>
       {isLoginModalOpen && (
         <LoginModal onClose={() => setIsLoginModalOpen(false)} />
+      )}
+      {isLogoutModalOpen && (
+        <MessageModal
+          title="로그아웃 완료"
+          message="안전하게 로그아웃 되었습니다."
+          onClose={() => setIsLogoutModalOpen(false)}
+        />
       )}
     </div>
   );

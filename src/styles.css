@@ -3563,3 +3563,20 @@ body {
   border-color: #c9302c;
   box-shadow: 0 2px 8px rgba(217, 83, 79, 0.4); /* 붉은 그림자 */
 }
+
+.modal-confirm-btn {
+  background: #4a90e2; /* 깔끔한 파란색 */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 30px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  width: 100%; /* 버튼을 꽉 차게 */
+  transition: background 0.2s;
+}
+
+.modal-confirm-btn:hover {
+  background: #357abd; /* 마우스 올리면 진해짐 */
+}
