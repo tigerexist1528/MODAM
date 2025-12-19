@@ -3763,3 +3763,243 @@ body {
   font-size: 20px;
   font-weight: bold;
 }
+
+/* ========================================= */
+/* 🎮 미니게임: 무기 연마 시뮬레이터 */
+/* ========================================= */
+
+.minigame-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+  color: #fff;
+}
+
+/* 게임 메인 스테이지 (강화소 배경) */
+.polishing-stage {
+  position: relative;
+  width: 100%;
+  height: 400px;
+  background-color: #1a1a1a; /* 배경 이미지 없을 시 기본색 */
+  background-image: url("https://via.placeholder.com/800x400/222/555?text=Smithy+Background"); /* 배경 이미지 교체 필요 */
+  background-size: cover;
+  background-position: center;
+  border: 2px solid #444;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+/* 무기 슬롯 */
+.weapon-slot {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #666;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.weapon-slot:hover {
+  border-color: #ffcc00;
+  box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
+}
+.weapon-slot img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+/* 강화 수치 표시 */
+.polish-level-badge {
+  position: absolute;
+  bottom: -15px;
+  background: #000;
+  border: 1px solid #ffcc00;
+  color: #ffcc00;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  z-index: 10;
+}
+
+/* 연마 버튼 */
+.polish-btn {
+  margin-top: 30px;
+  padding: 15px 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  background: linear-gradient(180deg, #ffcc00, #ff9900);
+  border: none;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(255, 153, 0, 0.4);
+  transition: transform 0.1s;
+}
+.polish-btn:active {
+  transform: scale(0.95);
+}
+.polish-btn:disabled {
+  background: #555;
+  cursor: not-allowed;
+  box-shadow: none;
+  color: #888;
+}
+
+/* 결과 오버레이 애니메이션 */
+.result-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 50;
+  animation: fadeIn 0.2s forwards;
+}
+
+.result-text {
+  font-size: 3rem;
+  font-weight: 900;
+  text-shadow: 0 0 20px currentColor;
+  margin-bottom: 20px;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* 상태별 색상 */
+.res-success {
+  color: #ffcc00;
+} /* 노랑 */
+.res-maintain {
+  color: #ff8800;
+} /* 주황 */
+.res-drop {
+  color: #ff3333;
+} /* 빨강 */
+.res-break {
+  color: #880000;
+  text-decoration: line-through;
+} /* 검붉은색 */
+.res-max {
+  color: #00ffff;
+  font-size: 4rem;
+  text-shadow: 0 0 30px #00ffff, 0 0 60px #00aaff;
+  animation: shake 0.5s;
+}
+
+/* 인벤토리 (우측 하단 박스) */
+.inventory-box {
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 15px;
+}
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.inv-slot {
+  aspect-ratio: 1/1;
+  background: #111;
+  border: 1px dashed #444;
+  border-radius: 8px;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.inv-slot.active {
+  border: 1px solid #ffcc00;
+  background: #2a2a00;
+}
+.inv-slot img {
+  width: 70%;
+  height: 70%;
+}
+.inv-level {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.7rem;
+  color: #ffcc00;
+}
+.inv-close {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: red;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  text-align: center;
+  line-height: 16px;
+  cursor: pointer;
+  display: none;
+}
+.inv-slot:hover .inv-close {
+  display: block;
+}
+
+@keyframes popIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes shake {
+  0% {
+    transform: translate(1px, 1px) rotate(0deg);
+  }
+  10% {
+    transform: translate(-1px, -2px) rotate(-1deg);
+  }
+  20% {
+    transform: translate(-3px, 0px) rotate(1deg);
+  }
+  30% {
+    transform: translate(3px, 2px) rotate(0deg);
+  }
+  40% {
+    transform: translate(1px, -1px) rotate(1deg);
+  }
+  50% {
+    transform: translate(-1px, 2px) rotate(-1deg);
+  }
+  60% {
+    transform: translate(-3px, 1px) rotate(0deg);
+  }
+  70% {
+    transform: translate(3px, 1px) rotate(-1deg);
+  }
+  80% {
+    transform: translate(-1px, -1px) rotate(1deg);
+  }
+  90% {
+    transform: translate(1px, 2px) rotate(0deg);
+  }
+  100% {
+    transform: translate(1px, -2px) rotate(-1deg);
+  }
+}

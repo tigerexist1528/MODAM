@@ -76,6 +76,8 @@ import InnerModalManager from "./components/modals/InnerModalManager";
 import { useImagePreloader } from "./hooks/useImagePreloader";
 import { useTooltipControl } from "./hooks/useTooltipControl";
 import { usePresetManager } from "./hooks/usePresetManager";
+// minigame
+import PolishingGame from "./components/MiniGame/PolishingGame";
 
 // =============================================================================
 // [2] Main Component: App
@@ -3310,7 +3312,25 @@ export default function App() {
           <div className="coming-soon">🏆 직업 랭킹 (준비 중)</div>
         )}
         {activeMenu === "GAME" && (
-          <div className="coming-soon">🎮 미니 게임 (준비 중)</div>
+          <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+            {/* 세션이 있어야 저장 가능하므로 체크 */}
+            {session ? (
+              <PolishingGame userSession={session} />
+            ) : (
+              <div
+                style={{ textAlign: "center", padding: "100px", color: "#888" }}
+              >
+                <div>로그인이 필요한 콘텐츠입니다.</div>
+                <button
+                  className="main-login-btn"
+                  onClick={() => setIsLoginModalOpen(true)}
+                  style={{ marginTop: "20px" }}
+                >
+                  로그인 하러가기
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </main>
 
