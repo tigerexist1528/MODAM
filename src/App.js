@@ -180,7 +180,7 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // 프로필 수정창
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // 최초 설정 여부
   const [activeMenu, setActiveMenu] = useState("HOME");
-  const [activeBoardTab, setActiveBoardTab] = useState("FREE");
+  const [activeBoardTab, setActiveBoardTab] = useState(null);
   const [systemModal, setSystemModal] = useState({
     type: null,
     message: "",
@@ -212,6 +212,32 @@ export default function App() {
     openAlert,
     setSystemModal
   );
+
+  // ★ [추가] 메뉴 이동 시 브라우저 기록 남기는 함수
+  const navigateTo = (menu) => {
+    if (activeMenu === menu) return; // 같은 메뉴면 무시
+    window.history.pushState({ menu: menu }, ""); // 기록 추가
+    setActiveMenu(menu);
+  };
+
+  // ★ [추가] 브라우저 뒤로가기 처리
+  useEffect(() => {
+    // 1. 페이지가 처음 로드될 때 현재 상태 저장
+    window.history.replaceState({ menu: "HOME" }, "");
+
+    // 2. 뒤로가기 버튼(popstate) 눌렀을 때 감지
+    const handlePopState = (event) => {
+      if (event.state && event.state.menu) {
+        setActiveMenu(event.state.menu); // 저장된 메뉴로 이동
+      } else {
+        // 상태가 없으면 기본 홈으로
+        setActiveMenu("HOME");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // 4. useEffect (인증 로직 + 프로필 체크)
   useEffect(() => {
@@ -3119,7 +3145,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", gap: "30px" }}>
           <div
             className="logo-area"
-            onClick={() => setActiveMenu("HOME")} // 로고 누르면 계산기로 복귀
+            onClick={() => navigateTo("HOME")} // 로고 누르면 계산기로 복귀
             style={{
               fontSize: "1.2rem",
               fontWeight: "bold",
@@ -3174,32 +3200,32 @@ export default function App() {
           className={activeMenu === "BOARD" ? "active" : ""}
           onClick={() => {
             setActiveBoardTab(null); // ★ [추가] 탭을 '전체'로 초기화
-            setActiveMenu("BOARD"); // 그 다음 게시판 화면으로 이동
+            navigateTo("BOARD"); // 그 다음 게시판 화면으로 이동
           }}
         >
           게시판
         </button>
         <button
           className={activeMenu === "CALC" ? "active" : ""}
-          onClick={() => setActiveMenu("CALC")}
+          onClick={() => navigateTo("CALC")}
         >
           데미지 계산기
         </button>
         <button
           className={activeMenu === "SIM" ? "active" : ""}
-          onClick={() => setActiveMenu("SIM")}
+          onClick={() => navigateTo("SIM")}
         >
           시뮬레이터
         </button>
         <button
           className={activeMenu === "RANK" ? "active" : ""}
-          onClick={() => setActiveMenu("RANK")}
+          onClick={() => navigateTo("RANK")}
         >
           직업 랭킹
         </button>
         <button
           className={activeMenu === "GAME" ? "active" : ""}
-          onClick={() => setActiveMenu("GAME")}
+          onClick={() => navigateTo("GAME")}
         >
           미니 게임
         </button>
@@ -3211,7 +3237,7 @@ export default function App() {
       <main>
         {activeMenu === "HOME" && (
           <Home
-            setActivePage={setActiveMenu} // 메인 메뉴 이동용 (기존 그대로)
+            setActivePage={navigateTo} // 메인 메뉴 이동용 (기존 그대로)
             // ★ [수정] 여기가 핵심입니다!
             // Home에게 "게시판 탭 바꾸는 리모컨(setActiveBoardTab)"을 쥐어줍니다.
             setBoardCategory={setActiveBoardTab}
@@ -3252,7 +3278,7 @@ export default function App() {
 
             {/* 게시판 컨텐츠 (category만 바꿔서 재사용) */}
             <BoardPage
-              setActivePage={setActiveMenu} // ★ 이 줄이 빠져있어서 버튼이 안 눌렸습니다!
+              setActivePage={navigateTo} // ★ 이 줄이 빠져있어서 버튼이 안 눌렸습니다!
               userStats={userProfile}
               category={activeBoardTab}
             />

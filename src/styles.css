@@ -4184,16 +4184,19 @@ body {
   color: #ccc;
 }
 
-/* 게시글 목록 (테이블) 수정판 */
+/* ========================================= */
+/* 🛠️ 게시판 테이블 수정판 (깨짐 방지) */
+/* ========================================= */
+
 .cafe-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
-  table-layout: fixed; /* ★ 너비 고정 (제목이 길어도 다른 칸을 밀지 않음) */
+  table-layout: auto; /* ★ [핵심] fixed 제거 -> 내용물에 맞춰 유동적으로 늘어남 */
 }
 
 .cafe-table th {
-  padding: 12px 5px;
+  padding: 12px 8px; /* 여백 확보 */
   border-bottom: 1px solid #444;
   color: #aaa;
   font-weight: normal;
@@ -4202,63 +4205,65 @@ body {
 }
 
 .cafe-table td {
-  padding: 12px 5px;
+  padding: 12px 8px;
   border-bottom: 1px solid #222;
   color: #ccc;
   text-align: center;
-  vertical-align: middle; /* 세로 정렬 */
-
-  /* ★ 내용이 많아도 줄바꿈 없이 한 줄로 표시 */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .cafe-table tr:hover {
   background-color: #1a1a1a;
 }
 
-/* 제목 컬럼 스타일 (여기는 줄바꿈 허용 or 말줄임) */
+/* 제목 컬럼 */
 .col-title {
   text-align: left !important;
   padding-left: 15px !important;
   cursor: pointer;
-
-  /* 제목은 길면 ...으로 표시 */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: 50%; /* 제목 칸을 최대한 넓게 */
 }
 
 .post-title-text {
   color: #fff;
   transition: color 0.2s;
+  /* 제목이 너무 길면 ... 처리하고 싶을 때 사용 (선택 사항) */
+  /* display: inline-block; max-width: 80%; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; */
 }
 .post-title-text:hover {
   color: #ffcc00;
   text-decoration: underline;
 }
-/* 공지사항 강조 */
-.notice-row {
-  background-color: rgba(255, 204, 0, 0.05);
+
+/* 배지 스타일 (깨짐 방지) */
+.notice-badge,
+.best-badge {
+  display: inline-block; /* ★ 글자처럼 취급하되 박스 형태 유지 */
+  white-space: nowrap; /* ★ 내부 글자 줄바꿈 절대 금지 */
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-right: 8px;
+  font-weight: bold;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  vertical-align: middle;
 }
+
 .notice-badge {
   background: #ff5a6a;
   color: #fff;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-right: 6px;
-  font-weight: bold;
-  display: inline-block; /* 뱃지 깨짐 방지 */
 }
 .best-badge {
   background: #ffcc00;
   color: #000;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 3px;
-  margin-right: 6px;
+}
+
+/* 공지사항 행 강조 */
+.notice-row {
+  background-color: rgba(255, 90, 106, 0.08);
+}
+.notice-row td {
+  color: #ffdbe0;
   font-weight: bold;
 }
 

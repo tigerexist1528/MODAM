@@ -71,9 +71,14 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
+  // 글 상세 보기 함수 수정
   const fetchPostDetail = async (post) => {
+    // ★ [추가] 상세 보기로 들어갈 때 기록 남기기
+    window.history.pushState({ menu: "BOARD", view: "DETAIL" }, "");
+
     await supabase.rpc("increment_view_count", { row_id: post.id });
     setCurrentPost(post);
+    // ... (나머지 코드는 그대로)
     fetchComments(post.id);
     fetchVotes(post.id);
     setView("DETAIL");
