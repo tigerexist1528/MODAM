@@ -80,6 +80,7 @@ import { useImagePreloader } from "./hooks/useImagePreloader";
 import { useTooltipControl } from "./hooks/useTooltipControl";
 import { usePresetManager } from "./hooks/usePresetManager";
 import { useUrlNavigation } from "./hooks/useUrlNavigation";
+import { useTheme } from "./hooks/useTheme";
 // minigame
 import PolishingGame from "./components/MiniGame/PolishingGame";
 
@@ -185,6 +186,7 @@ export default function App() {
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // 최초 설정 여부
   const { activeMenu, navigateTo } = useUrlNavigation("HOME");
   const [activeBoardTab, setActiveBoardTab] = useState(null);
+  const { theme, toggleTheme } = useTheme();
   const [systemModal, setSystemModal] = useState({
     type: null,
     message: "",
@@ -3135,7 +3137,30 @@ export default function App() {
         </div>
 
         {/* 로그인/프로필 버튼 영역 */}
-        <div className="auth-buttons">
+        <div
+          className="auth-buttons"
+          style={{ display: "flex", alignItems: "center" }}
+        >
+          <button
+            onClick={toggleTheme}
+            style={{
+              background: "transparent",
+              border: "1px solid #555",
+              borderRadius: "20px",
+              padding: "5px 12px",
+              // 다크모드면 노란색, 라이트모드면 검은색
+              color: theme === "dark" ? "#ffcc00" : "#333",
+              cursor: "pointer",
+              marginRight: "15px", // 오른쪽 버튼들과 간격 띄우기
+              fontSize: "1.2rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            title="테마 변경"
+          >
+            {theme === "dark" ? "🌙" : "☀️"}
+          </button>
           {session ? (
             <div className="user-info-area">
               <div

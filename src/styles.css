@@ -4686,3 +4686,113 @@ body {
   color: #000;
   border-color: var(--text-gold);
 }
+
+/* ========================================= */
+/* 🌞 라이트 모드 (Light Mode) 패치 */
+/* ========================================= */
+
+/* 1. 라이트 모드일 때 변수 재정의 */
+body.light-mode {
+  --bg-dark: #f4f6f8; /* 전체 배경: 밝은 회색 */
+  --bg-panel: #ffffff; /* 패널 배경: 완전 흰색 */
+  --border-color: #d1d5db; /* 테두리: 연한 회색 */
+  --text-main: #333333; /* 기본 글씨: 진한 검정 */
+  --text-gold: #d97706; /* 골드: 흰 배경에 잘 보이게 진한 오렌지 골드 */
+
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+}
+
+/* 2. 하드코딩된 어두운 배경들을 흰색으로 강제 변환 */
+body.light-mode .board-container,
+body.light-mode .write-container,
+body.light-mode .board-toolbar,
+body.light-mode .comment-box,
+body.light-mode .faq-item,
+body.light-mode .modal-content,
+body.light-mode .best-posts-area {
+  background: var(--bg-panel) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important; /* 그림자 연하게 */
+}
+
+/* 3. 입력창 스타일 (흰 배경에 검은 글씨) */
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea,
+body.light-mode .search-select,
+body.light-mode .search-input,
+body.light-mode .comment-input,
+body.light-mode .write-input {
+  background: #fff !important;
+  border: 1px solid #ccc !important;
+  color: #000 !important;
+}
+
+/* 4. 게시판 테이블 가독성 확보 */
+body.light-mode .cafe-table th {
+  background: #eef0f2 !important;
+  color: #555 !important;
+  border-bottom: 1px solid #ccc !important;
+}
+body.light-mode .cafe-table td {
+  border-bottom: 1px solid #eee !important;
+  color: #333 !important;
+}
+body.light-mode .post-title-text {
+  color: #000 !important;
+}
+body.light-mode .cafe-table tr:hover {
+  background-color: #f9f9f9 !important;
+}
+
+/* 5. 에디터 (Quill) 배경 */
+body.light-mode .ql-toolbar {
+  background: #f0f0f0 !important;
+  border-color: #ccc !important;
+}
+body.light-mode .ql-container {
+  border-color: #ccc !important;
+  background: #fff !important;
+  color: #000 !important;
+}
+
+/* 6. 공지사항/베스트 뱃지 등 */
+body.light-mode .notice-row {
+  background-color: rgba(255, 90, 106, 0.1) !important;
+}
+body.light-mode .notice-pinned-row {
+  background-color: rgba(255, 204, 0, 0.15) !important;
+}
+body.light-mode .notice-row td {
+  color: #d63031 !important; /* 공지 글씨 진하게 */
+}
+
+/* 7. 헤더 & 푸터 */
+body.light-mode .site-header,
+body.light-mode .gnb,
+body.light-mode .board-header,
+body.light-mode .detail-header {
+  background: #fff !important;
+  border-color: #eee !important;
+}
+body.light-mode .logo-area span {
+  color: #000 !important;
+}
+body.light-mode .gnb button {
+  color: #555;
+}
+body.light-mode .gnb button.active {
+  color: #4a90e2;
+}
+
+/* 8. 버튼들 */
+body.light-mode .btn-dark {
+  background: #e0e0e0 !important;
+  color: #333 !important;
+  border: 1px solid #ccc !important;
+}
+body.light-mode .btn-dark:hover {
+  background: #d0d0d0 !important;
+}
