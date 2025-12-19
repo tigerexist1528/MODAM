@@ -4185,68 +4185,84 @@ body {
 }
 
 /* ========================================= */
-/* 🛠️ 게시판 테이블 수정판 (깨짐 방지) */
+/* 🛠️ 게시판 테이블 스타일 (최종 수정) */
 /* ========================================= */
 
 .cafe-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
-  table-layout: auto; /* ★ [핵심] fixed 제거 -> 내용물에 맞춰 유동적으로 늘어남 */
+  /* ★ [핵심 1] fixed로 해야 칸 너비가 지정한대로 딱 고정됩니다. */
+  table-layout: fixed;
 }
 
-.cafe-table th {
-  padding: 12px 8px; /* 여백 확보 */
-  border-bottom: 1px solid #444;
-  color: #aaa;
-  font-weight: normal;
-  text-align: center;
-  white-space: nowrap; /* 헤더 줄바꿈 방지 */
-}
-
+.cafe-table th,
 .cafe-table td {
   padding: 12px 8px;
   border-bottom: 1px solid #222;
-  color: #ccc;
   text-align: center;
   vertical-align: middle;
-}
 
+  /* 내용이 길어도 줄바꿈 없이 ... 처리 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cafe-table th {
+  border-bottom: 1px solid #444;
+  color: #aaa;
+}
+.cafe-table td {
+  color: #ccc;
+}
 .cafe-table tr:hover {
   background-color: #1a1a1a;
 }
 
-/* 제목 컬럼 */
+/* ★ [핵심 2] 제목 칸 디자인 (여기가 제일 중요!) */
 .col-title {
+  /* 제목 칸만 왼쪽 정렬 */
   text-align: left !important;
   padding-left: 15px !important;
   cursor: pointer;
-  width: 50%; /* 제목 칸을 최대한 넓게 */
+
+  /* Flexbox를 써서 [배지]와 [제목]을 가로로 완벽하게 정렬 */
+  display: flex !important;
+  align-items: center;
+  gap: 8px; /* 배지와 제목 사이 간격 */
+
+  /* 제목 칸이 찌그러지지 않도록 높이 확보 */
+  height: 100%;
+  min-height: 45px; /* 행 높이 최소값 보장 */
 }
 
+/* 제목 텍스트 (말줄임표 처리) */
 .post-title-text {
   color: #fff;
   transition: color 0.2s;
-  /* 제목이 너무 길면 ... 처리하고 싶을 때 사용 (선택 사항) */
-  /* display: inline-block; max-width: 80%; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; */
+
+  /* 제목이 길면 ...으로 자르기 */
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1; /* 남은 공간 다 차지하기 */
 }
 .post-title-text:hover {
   color: #ffcc00;
   text-decoration: underline;
 }
 
-/* 배지 스타일 (깨짐 방지) */
+/* 배지 (BEST, 필독) 깨짐 방지 */
 .notice-badge,
 .best-badge {
-  display: inline-block; /* ★ 글자처럼 취급하되 박스 형태 유지 */
-  white-space: nowrap; /* ★ 내부 글자 줄바꿈 절대 금지 */
+  flex-shrink: 0; /* ★ 공간이 좁아도 배지 크기는 절대 줄어들지 않음 */
+  display: inline-block;
   padding: 3px 8px;
   border-radius: 4px;
-  margin-right: 8px;
   font-weight: bold;
   font-size: 0.75rem;
-  line-height: 1.2;
-  vertical-align: middle;
+  line-height: 1;
 }
 
 .notice-badge {
@@ -4258,28 +4274,21 @@ body {
   color: #000;
 }
 
-/* 공지사항 행 강조 */
-.notice-row {
-  background-color: rgba(255, 90, 106, 0.08);
-}
-.notice-row td {
-  color: #ffdbe0;
-  font-weight: bold;
-}
-
-/* 인기글(Best 5) 섹션 */
+/* 인기글(Best 5) 박스 (이건 그대로 두셔도 됩니다) */
 .best-posts-area {
   margin-bottom: 30px;
-  padding: 15px;
-  background: linear-gradient(135deg, #222 0%, #111 100%);
+  padding: 0 15px 15px 15px; /* 내부 테이블 여백 조정 */
+  background: linear-gradient(135deg, #1e1e1e 0%, #111 100%);
   border: 1px solid #444;
   border-radius: 8px;
 }
 .best-label {
   color: #ffcc00;
   font-weight: bold;
-  margin-bottom: 10px;
+  padding: 15px 5px;
   display: block;
+  border-bottom: 1px solid #333; /* 구분선 추가 */
+  margin-bottom: 10px;
 }
 
 /* 글쓰기 폼 */
