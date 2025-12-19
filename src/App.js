@@ -3252,8 +3252,9 @@ export default function App() {
 
             {/* 게시판 컨텐츠 (category만 바꿔서 재사용) */}
             <BoardPage
-              userStats={userProfile} // userStats prop으로 프로필 정보 전달
-              category={activeBoardTab} // 현재 탭(NOTICE, GUIDE, FREE) 전달
+              setActivePage={setActiveMenu} // ★ 이 줄이 빠져있어서 버튼이 안 눌렸습니다!
+              userStats={userProfile}
+              category={activeBoardTab}
             />
           </>
         )}
