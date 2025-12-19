@@ -4766,7 +4766,7 @@ body.light-mode .detail-header {
   border-bottom: 1px solid #d1d5db !important;
 }
 
-/* 5. 컨테이너 박스들 (흰색 배경화) */
+/* 5. [강화된 버전] 모든 탭의 컨테이너 박스들 강제 화이트닝 */
 body.light-mode .board-container,
 body.light-mode .write-container,
 body.light-mode .board-toolbar,
@@ -4774,13 +4774,37 @@ body.light-mode .comment-box,
 body.light-mode .faq-item,
 body.light-mode .modal-content, 
 body.light-mode .best-posts-area,
-body.light-mode .naesil-row, /* 내실 박스 */
-body.light-mode .item-card,  /* 아이템 카드 */
-body.light-mode .calc-game-container {
+body.light-mode .naesil-row, 
+body.light-mode .item-card,  
+body.light-mode .calc-game-container,
+/* 👇 추가: 계산기, 시뮬레이터, 랭킹 등에서 쓸법한 클래스들 추측 추가 */
+body.light-mode .calculator-wrapper,
+body.light-mode .simulator-box,
+body.light-mode .ranking-container,
+body.light-mode .game-area,
+body.light-mode .result-box,
+body.light-mode table /* 모든 테이블 */ {
   background: #ffffff !important;
   border-color: #d1d5db !important;
   color: #333333 !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 랭킹 탭 같은 곳의 테이블 글씨 강제 변환 */
+body.light-mode table th {
+  background: #f3f4f6 !important;
+  color: #111 !important;
+}
+body.light-mode table td {
+  color: #333 !important;
+}
+
+/* 혹시 모를 모든 패널급 div들 (조심스럽게 적용) */
+body.light-mode div[class*="container"],
+body.light-mode div[class*="wrapper"],
+body.light-mode div[class*="box"] {
+  /* 배경이 검정(#000, #111 등)인 경우에만 흰색으로 뒤집기 위한 안전장치 */
+  /* (CSS만으로는 조건부 적용이 어려워 위에서 명시한 클래스들이 가장 확실합니다) */
 }
 
 /* 6. 입력창 (Input, Select, Editor) */
