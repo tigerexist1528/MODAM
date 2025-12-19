@@ -169,6 +169,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
+  // ★ [수정됨] 글 등록/수정 핸들러
   const handleWriteSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!form.title.trim()) return alert("제목을 입력해주세요.");
@@ -176,23 +177,31 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
+    // form.category가 있으면 쓰고, 없으면 현재 탭(category) 쓰되 그것도 없으면 FREE
+    const targetCategory = form.category || category || "FREE";
+
     const payload = {
       title: form.title,
       content: form.content,
       is_notice: form.isNotice,
-      category: form.category, // ★ 사용자가 선택한 카테고리로 저장
+      category: targetCategory,
     };
 
     try {
       if (editingId) {
-        const { error } = await supabase
+        // [수정 로직] 내 글인지 확인 (user_id)
+        const { error, count } = await supabase
           .from("posts")
           .update(payload)
           .eq("id", editingId)
-          .eq("user_id", session.user.id);
+          .eq("user_id", session.user.id) // 본인 확인
+          .select(); // 업데이트된 행 반환
+
         if (error) throw error;
+        // count체크는 Supabase 버전에 따라 다를 수 있으나 에러가 없으면 성공 간주
         alert("수정되었습니다.");
       } else {
+        // [등록 로직]
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
@@ -216,14 +225,18 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     const { error } = await supabase
       .from("posts")
       .delete()
-      .eq("id", currentPost.id);
+      .eq("id", currentPost.id)
+      .eq("user_id", session.user.id);
     if (!error) {
       alert("삭제되었습니다.");
       handleGoList();
+    } else {
+      alert("삭제 실패 (본인 글만 삭제 가능)");
     }
   };
 
   const handleGoList = () => {
+    // 폼 초기화 (카테고리도 초기화)
     setForm({ title: "", content: "", isNotice: false, category: "FREE" });
     setEditingId(null);
     setCurrentPost(null);
@@ -239,13 +252,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase.from("post_votes").insert([
-        {
-          post_id: currentPost.id,
-          user_id: session.user.id,
-          vote_type: type,
-        },
-      ]);
+      await supabase
+        .from("post_votes")
+        .insert([
+          {
+            post_id: currentPost.id,
+            user_id: session.user.id,
+            vote_type: type,
+          },
+        ]);
     }
     const { count } = await supabase
       .from("post_votes")
@@ -266,14 +281,16 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const handleCommentSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!commentInput.trim()) return;
-    const { error } = await supabase.from("comments").insert([
-      {
-        post_id: currentPost.id,
-        content: commentInput,
-        user_id: session.user.id,
-        nickname: myNickname || "모험가",
-      },
-    ]);
+    const { error } = await supabase
+      .from("comments")
+      .insert([
+        {
+          post_id: currentPost.id,
+          content: commentInput,
+          user_id: session.user.id,
+          nickname: myNickname || "모험가",
+        },
+      ]);
     if (!error) {
       setCommentInput("");
       fetchComments(currentPost.id);
@@ -311,21 +328,19 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     };
   };
 
-  // ★ [핵심] 업그레이드된 에디터 툴바 설정
   const modules = useMemo(
     () => ({
       toolbar: {
         container: [
-          // 폰트 종류와 크기 선택
-          [{ font: Font.whitelist }],
-          [{ size: Size.whitelist }], // 우리가 정의한 10px, 12px... 가 나옴
+          [{ font: Font.whitelist }], // 폰트 선택
+          [{ size: Size.whitelist }], // 크기 선택
           [{ header: [1, 2, 3, false] }],
-          ["bold", "italic", "underline", "strike"], // 꾸미기
-          [{ color: [] }, { background: [] }], // 색상
-          [{ align: [] }], // 정렬
-          [{ list: "ordered" }, { list: "bullet" }], // 리스트
-          ["link", "image", "video"], // 미디어
-          ["clean"], // 초기화
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ align: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image", "video"],
+          ["clean"],
         ],
         handlers: { image: imageHandler },
       },
@@ -408,13 +423,14 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               className="btn-gold"
               onClick={() => {
                 if (!session) return alert("로그인이 필요합니다.");
-                // 글쓰기 누를 때 현재 카테고리를 기본값으로 설정 (전체면 FREE)
+                // 글쓰기 누를 때 초기화 (기본값 설정)
                 setForm({
                   title: "",
                   content: "",
                   isNotice: false,
                   category: category || "FREE",
                 });
+                setEditingId(null);
                 setView("WRITE");
               }}
             >
@@ -434,7 +450,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               </tr>
             </thead>
             <tbody>
-              {/* 1. 상단 공지 (복사본) */}
               {noticePosts.map((post) => (
                 <tr
                   key={`notice-${post.id}`}
@@ -459,11 +474,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                   <td>{post.like_count}</td>
                 </tr>
               ))}
-
-              {/* 2. 일반 목록 (번호 계산: 전체개수 - 인덱스) */}
               {posts.map((post, idx) => (
                 <tr key={post.id} onClick={() => fetchPostDetail(post)}>
-                  {/* ★ [핵심] DB ID 대신 순차 번호 표시 */}
                   <td>{posts.length - idx}</td>
                   <td className="col-title">
                     <span className="post-title-text">{post.title}</span>
@@ -477,7 +489,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                   <td>{post.like_count}</td>
                 </tr>
               ))}
-
               {posts.length === 0 && (
                 <tr>
                   <td colSpan="6" style={{ padding: "50px", color: "#666" }}>
@@ -508,7 +519,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               alignItems: "center",
             }}
           >
-            {/* ★ [핵심] 게시판 선택 드롭다운 */}
             <select
               className="category-select"
               value={form.category}
@@ -516,12 +526,10 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             >
               <option value="FREE">💬 자유 게시판</option>
               <option value="GUIDE">📘 공략 게시판</option>
-              {/* 관리자일 때만 공지사항 선택 가능 */}
               {session && session.user.id === ADMIN_ID && (
                 <option value="NOTICE">📢 공지사항</option>
               )}
             </select>
-
             {session && session.user.id === ADMIN_ID && (
               <label
                 style={{
@@ -549,10 +557,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
+
           <div
             style={{
               background: "#fff",
-              height: "450px",
+              height: "500px",
               marginBottom: "50px",
               borderRadius: "4px",
             }}
@@ -563,10 +572,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               value={form.content}
               onChange={(val) => setForm({ ...form, content: val })}
               modules={modules}
-              style={{ height: "400px", color: "#000" }}
+              style={{ height: "450px", color: "#000" }}
               placeholder="내용을 입력하세요."
             />
           </div>
+
           <div
             style={{
               textAlign: "center",
@@ -588,7 +598,24 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       {view === "DETAIL" && currentPost && (
         <div className="post-detail">
           <div className="detail-header">
-            <div className="detail-title">{currentPost.title}</div>
+            <div className="detail-title">
+              <span
+                style={{
+                  fontSize: "1rem",
+                  color: "#ffcc00",
+                  marginRight: "10px",
+                }}
+              >
+                [
+                {currentPost.category === "NOTICE"
+                  ? "공지"
+                  : currentPost.category === "GUIDE"
+                  ? "공략"
+                  : "자유"}
+                ]
+              </span>
+              {currentPost.title}
+            </div>
             <div className="detail-meta">
               <span>{currentPost.nickname}</span>
               <span>| {formatDate(currentPost.created_at)}</span>
@@ -601,10 +628,12 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                   <span
                     style={{ cursor: "pointer", color: "#fff" }}
                     onClick={() => {
+                      /* ★ [핵심 수정] 수정 버튼 누를 때 category 정보도 form에 세팅! */
                       setForm({
                         title: currentPost.title,
                         content: currentPost.content,
                         isNotice: currentPost.is_notice,
+                        category: currentPost.category, // 이게 빠져서 수정이 안됐던 것!
                       });
                       setEditingId(currentPost.id);
                       setView("WRITE");
@@ -622,6 +651,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               )}
             </div>
           </div>
+          {/* 폰트 적용된 내용 표시 */}
           <div
             className="detail-content ql-editor"
             dangerouslySetInnerHTML={{ __html: currentPost.content }}
