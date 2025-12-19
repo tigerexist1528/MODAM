@@ -221,7 +221,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
-  // ★ [수정] 글 등록/수정 후 해당 게시판으로 자동 이동
   const handleWriteSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!form.title.trim()) return alert("제목을 입력해주세요.");
@@ -230,7 +229,9 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
+    // 폼에 설정된 카테고리가 있으면 그거 쓰고, 없으면 현재 보고 있는 카테고리, 그것도 없으면 FREE
     const targetCategory = form.category || category || "FREE";
+
     const payload = {
       title: form.title,
       content: form.content,
@@ -240,6 +241,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
 
     try {
       if (editingId) {
+        // [수정 로직]
         const { data, error } = await supabase
           .from("posts")
           .update(payload)
@@ -248,10 +250,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           .select();
 
         if (error) throw error;
-        if (!data || data.length === 0)
-          return alert("수정 실패: 권한이 없습니다.");
+
+        // 내 글이 아니거나 삭제된 경우
+        if (!data || data.length === 0) {
+          alert("수정 실패: 권한이 없거나 이미 삭제된 글입니다.");
+          return;
+        }
         alert("수정되었습니다.");
       } else {
+        // [등록 로직]
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
@@ -265,18 +272,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         alert("등록되었습니다.");
       }
 
-      // ★ [핵심] 글 등록 후 해당 카테고리로 이동 및 새로고침
-      // 1. URL 업데이트 (카테고리 변경, ID 제거)
+      // ───────────────────────────────────────────────
+      // ★ [핵심] 저장 완료 후 '자동 새로고침' 로직
+      // ───────────────────────────────────────────────
+
+      // 1. 주소창을 해당 게시판 목록으로 미리 세팅 (ID는 지움)
       updateURL({ category: targetCategory, id: null });
 
-      // 2. App.js가 URL 변경을 감지하도록 강제 이벤트 발생 (Hooks 사용 시 필요)
-      window.dispatchEvent(new Event("popstate"));
-
-      // 3. 뷰 및 폼 초기화
-      setForm({ title: "", content: "", isNotice: false, category: "FREE" });
-      setEditingId(null);
-      setCurrentPost(null);
-      setView("LIST");
+      // 2. 페이지를 강제로 새로고침! (가장 확실하게 DB 변경사항 반영)
+      window.location.reload();
     } catch (error) {
       alert("작업 실패: " + error.message);
     }
