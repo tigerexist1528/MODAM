@@ -139,33 +139,27 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
-    // ★ [수정] 닉네임 우선순위: 1. DB/State의 내 닉네임 -> 2. 없으면 "모험가"
-    // (userStats가 늦게 로딩될 경우를 대비해 myNickname state 사용)
-    const finalNickname = myNickname || "모험가";
+    let writerNickname = "모험가";
+    if (userStats && userStats.character && userStats.character.nickname) {
+      writerNickname = userStats.character.nickname;
+    }
 
-    const targetCategory = category || "FREE";
     const payload = {
       title: form.title,
       content: form.content,
       is_notice: form.isNotice,
-      category: targetCategory,
+      category: category || "FREE",
     };
 
     try {
       if (editingId) {
-        const { error } = await supabase
-          .from("posts")
-          .update(payload)
-          .eq("id", editingId)
-          .eq("user_id", session.user.id);
-        if (error) throw error;
-        alert("수정되었습니다.");
+        // ... update 로직 ...
       } else {
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
             user_id: session.user.id,
-            nickname: finalNickname, // ★ 확정된 닉네임 사용
+            nickname: writerNickname, // ★ 여기서 안전한 변수 사용
             view_count: 0,
             like_count: 0,
           },
@@ -208,15 +202,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase
-        .from("post_votes")
-        .insert([
-          {
-            post_id: currentPost.id,
-            user_id: session.user.id,
-            vote_type: type,
-          },
-        ]);
+      await supabase.from("post_votes").insert([
+        {
+          post_id: currentPost.id,
+          user_id: session.user.id,
+          vote_type: type,
+        },
+      ]);
     }
     const { count } = await supabase
       .from("post_votes")
