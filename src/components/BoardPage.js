@@ -1,7 +1,36 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import ReactQuill from "react-quill";
+import ReactQuill, { Quill } from "react-quill"; // ★ Quill 객체 가져오기
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
+
+// --- [★ 에디터 업그레이드 설정] ---
+// 1. 글자 크기 (Size) - px 단위로 등록
+const Size = Quill.import("attributors/style/size");
+Size.whitelist = [
+  "10px",
+  "12px",
+  "14px",
+  "16px",
+  "18px",
+  "20px",
+  "24px",
+  "30px",
+  "48px",
+];
+Quill.register(Size, true);
+
+// 2. 폰트 (Font) - 주요 폰트 등록
+const Font = Quill.import("attributors/style/font");
+Font.whitelist = [
+  "Pretendard",
+  "Gulim",
+  "Batang",
+  "NanumGothic",
+  "Arial",
+  "Verdana",
+];
+Quill.register(Font, true);
+// --------------------------------
 
 const ADMIN_ID = "2f9ff0d3-4b34-42dd-9be6-ba4fea6aa3ff";
 
@@ -209,15 +238,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase
-        .from("post_votes")
-        .insert([
-          {
-            post_id: currentPost.id,
-            user_id: session.user.id,
-            vote_type: type,
-          },
-        ]);
+      await supabase.from("post_votes").insert([
+        {
+          post_id: currentPost.id,
+          user_id: session.user.id,
+          vote_type: type,
+        },
+      ]);
     }
     const { count } = await supabase
       .from("post_votes")
@@ -238,16 +265,14 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const handleCommentSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!commentInput.trim()) return;
-    const { error } = await supabase
-      .from("comments")
-      .insert([
-        {
-          post_id: currentPost.id,
-          content: commentInput,
-          user_id: session.user.id,
-          nickname: myNickname || "모험가",
-        },
-      ]);
+    const { error } = await supabase.from("comments").insert([
+      {
+        post_id: currentPost.id,
+        content: commentInput,
+        user_id: session.user.id,
+        nickname: myNickname || "모험가",
+      },
+    ]);
     if (!error) {
       setCommentInput("");
       fetchComments(currentPost.id);
@@ -285,20 +310,21 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     };
   };
 
-  // ★ 폰트 및 크기 설정 추가
+  // ★ [핵심] 업그레이드된 에디터 툴바 설정
   const modules = useMemo(
     () => ({
       toolbar: {
         container: [
+          // 폰트 종류와 크기 선택
+          [{ font: Font.whitelist }],
+          [{ size: Size.whitelist }], // 우리가 정의한 10px, 12px... 가 나옴
           [{ header: [1, 2, 3, false] }],
-          [{ font: [] }], // 폰트 선택 기능
-          [{ size: ["small", false, "large", "huge"] }], // 글자 크기
-          ["bold", "italic", "underline", "strike"],
-          [{ color: [] }, { background: [] }],
-          [{ list: "ordered" }, { list: "bullet" }],
-          [{ align: [] }],
-          ["link", "image"],
-          ["clean"],
+          ["bold", "italic", "underline", "strike"], // 꾸미기
+          [{ color: [] }, { background: [] }], // 색상
+          [{ align: [] }], // 정렬
+          [{ list: "ordered" }, { list: "bullet" }], // 리스트
+          ["link", "image", "video"], // 미디어
+          ["clean"], // 초기화
         ],
         handlers: { image: imageHandler },
       },
@@ -306,7 +332,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     []
   );
 
-  // 상단 공지 필터링
   const noticePosts = posts.filter((p) => p.is_notice);
 
   return (
@@ -344,7 +369,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                       <td style={{ color: "#ffcc00", fontWeight: "bold" }}>
                         {idx + 1}
                       </td>
-                      {/* ★ CSS 수정으로 인해 이제 제목이 배지와 딱 붙지 않음 */}
                       <td className="col-title">
                         <span className="best-badge">BEST</span>
                         <span className="post-title-text">{post.title}</span>
