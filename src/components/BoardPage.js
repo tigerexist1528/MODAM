@@ -165,67 +165,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
-  // ★ [핵심 수정] 글 등록/수정 로직 강화
-  const handleWriteSubmit = async () => {
-    if (!session) return alert("로그인이 필요합니다.");
-    if (!form.title.trim()) return alert("제목을 입력해주세요.");
-
-    const textOnly = form.content.replace(/<[^>]*>?/gm, "").trim();
-    if (!textOnly && !form.content.includes("<img"))
-      return alert("내용을 입력해주세요.");
-
-    // 카테고리 결정: 폼 선택값 > 현재 탭 > FREE
-    const targetCategory = form.category || category || "FREE";
-
-    const payload = {
-      title: form.title,
-      content: form.content,
-      is_notice: form.isNotice,
-      category: targetCategory,
-    };
-
-    try {
-      if (editingId) {
-        // [수정]
-        // ★ .select()를 붙여야 업데이트된 데이터를 반환받을 수 있습니다.
-        const { data, error } = await supabase
-          .from("posts")
-          .update(payload)
-          .eq("id", editingId)
-          .eq("user_id", session.user.id) // 본인 글인지 이중 확인
-          .select();
-
-        if (error) throw error;
-
-        // ★ [중요] 실제로 업데이트된 행이 있는지 확인 (0개면 실패)
-        if (!data || data.length === 0) {
-          alert(
-            "수정 실패: 본인의 글이 아니거나 이미 삭제된 글일 수 있습니다."
-          );
-          return;
-        }
-
-        alert("수정되었습니다.");
-      } else {
-        // [등록]
-        const { error } = await supabase.from("posts").insert([
-          {
-            ...payload,
-            user_id: session.user.id,
-            nickname: myNickname || "모험가",
-            view_count: 0,
-            like_count: 0,
-          },
-        ]);
-        if (error) throw error;
-        alert("등록되었습니다.");
-      }
-      // 성공 시 목록으로 이동
-      handleGoList();
-    } catch (error) {
-      alert("작업 실패: " + error.message);
-    }
-  };
+  handleWriteSubmit;
 
   const handleDelete = async () => {
     if (!window.confirm("정말 삭제하시겠습니까?")) return;
@@ -258,15 +198,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase
-        .from("post_votes")
-        .insert([
-          {
-            post_id: currentPost.id,
-            user_id: session.user.id,
-            vote_type: type,
-          },
-        ]);
+      await supabase.from("post_votes").insert([
+        {
+          post_id: currentPost.id,
+          user_id: session.user.id,
+          vote_type: type,
+        },
+      ]);
     }
     const { count } = await supabase
       .from("post_votes")
@@ -287,16 +225,14 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const handleCommentSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!commentInput.trim()) return;
-    const { error } = await supabase
-      .from("comments")
-      .insert([
-        {
-          post_id: currentPost.id,
-          content: commentInput,
-          user_id: session.user.id,
-          nickname: myNickname || "모험가",
-        },
-      ]);
+    const { error } = await supabase.from("comments").insert([
+      {
+        post_id: currentPost.id,
+        content: commentInput,
+        user_id: session.user.id,
+        nickname: myNickname || "모험가",
+      },
+    ]);
     if (!error) {
       setCommentInput("");
       fetchComments(currentPost.id);
