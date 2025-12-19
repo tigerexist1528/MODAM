@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react"; // ★ useRef 추가
 import { supabase } from "../../utils/supabaseClient";
 import MiniItemPicker from "./MiniItemPicker";
 import { GET_ITEM_ICON_LOCAL } from "../../utils/data"; // 이미지 유틸 가져오기
@@ -27,9 +27,16 @@ const PolishingGame = ({ userSession }) => {
   const [gameState, setGameState] = useState("IDLE"); // IDLE, POLISHING, RESULT
   const [resultData, setResultData] = useState({ type: "", msg: "" });
 
+  const timerRef = useRef(null);
+
   // --- 초기 로딩 ---
   useEffect(() => {
     if (userSession) fetchInventory();
+
+    // 컴포넌트가 사라질 때 타이머 정리 (메모리 누수 방지)
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [userSession]);
 
   const fetchInventory = async () => {
@@ -41,25 +48,22 @@ const PolishingGame = ({ userSession }) => {
     if (!error && data) setInventory(data);
   };
 
-  // --- 무기 선택 핸들러 (Picker에서 호출) ---
   const handleSelectWeapon = async (item) => {
     if (inventory.length >= 6) {
       alert("보관함이 가득 찼습니다! (최대 6개)");
       return;
     }
 
-    // ★ 유틸리티를 사용해 정확한 이미지 경로 생성
     const imgUrl = GET_ITEM_ICON_LOCAL(item.name, "무기");
 
     const newWeapon = {
       user_id: userSession?.user?.id,
       weapon_name: item.name,
-      weapon_id: item.id.toString(), // ID는 문자열로 저장
-      image_url: imgUrl, // 생성된 이미지 경로 저장
+      weapon_id: item.id.toString(),
+      image_url: imgUrl,
       polish_level: 0,
     };
 
-    // DB Insert
     const { data, error } = await supabase
       .from("minigame_inventory")
       .insert([newWeapon])
@@ -68,8 +72,6 @@ const PolishingGame = ({ userSession }) => {
     if (!error && data) {
       setInventory([...inventory, data[0]]);
       setCurrentWeapon(data[0]);
-    } else {
-      console.error("저장 실패:", error);
     }
   };
 
@@ -92,15 +94,28 @@ const PolishingGame = ({ userSession }) => {
     }
   };
 
+  // --- ★ 연마 시작 (타이머 저장) ---
   const handlePolish = () => {
     if (!currentWeapon) return;
     if (currentWeapon.polish_level >= 10) return alert("이미 최고 단계입니다!");
 
     setGameState("POLISHING");
 
-    setTimeout(() => {
+    // 1.5초 뒤에 결과 실행 (이 타이머 ID를 저장해둠)
+    timerRef.current = setTimeout(() => {
       calculateResult();
     }, 1500);
+  };
+
+  // --- ★ 스킵 기능 (클릭 시 실행) ---
+  const handleSkip = () => {
+    if (gameState === "POLISHING") {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current); // 기존 타이머 취소
+        timerRef.current = null;
+      }
+      calculateResult(); // 즉시 결과 계산 실행
+    }
   };
 
   const calculateResult = async () => {
@@ -154,11 +169,12 @@ const PolishingGame = ({ userSession }) => {
       );
     }
 
+    // 결과창은 스킵 없이 보여주되, MAX 성공은 좀 더 오래 보여줌
     setTimeout(
       () => {
         setGameState("IDLE");
       },
-      type === "MAX" ? 4000 : 2000
+      type === "MAX" ? 4000 : 1500
     );
   };
 
@@ -169,7 +185,7 @@ const PolishingGame = ({ userSession }) => {
         재화 소모 없이 무한으로 연마해보세요! (최대 10단계)
       </p>
 
-      {/* 1. 메인 스테이지 */}
+      {/* 메인 스테이지 */}
       <div className="polishing-stage">
         <div
           className="weapon-slot"
@@ -192,13 +208,25 @@ const PolishingGame = ({ userSession }) => {
           )}
         </div>
 
+        {/* ★ 연마 중 오버레이 (클릭 시 스킵 기능 추가) */}
         {gameState === "POLISHING" && (
-          <div className="result-overlay">
+          <div
+            className="result-overlay"
+            onClick={handleSkip} // ★ 클릭하면 스킵!
+            style={{ cursor: "pointer" }}
+          >
             <div style={{ color: "#fff", fontSize: "1.5rem" }}>
               🔨 연마중...
             </div>
+            <div
+              style={{ color: "#888", fontSize: "0.8rem", marginTop: "10px" }}
+            >
+              (클릭하여 스킵)
+            </div>
           </div>
         )}
+
+        {/* 결과 오버레이 (클릭하면 결과창 닫기 추가 - 보너스 기능) */}
         {gameState === "RESULT" && (
           <div
             className="result-overlay"
@@ -207,7 +235,9 @@ const PolishingGame = ({ userSession }) => {
                 resultData.type === "MAX"
                   ? "rgba(0,0,50,0.9)"
                   : "rgba(0,0,0,0.85)",
+              cursor: "pointer",
             }}
+            onClick={() => setGameState("IDLE")} // 결과창도 클릭하면 바로 닫힘
           >
             <div className={`result-text res-${resultData.type.toLowerCase()}`}>
               {resultData.msg}
@@ -233,7 +263,7 @@ const PolishingGame = ({ userSession }) => {
         </button>
       </div>
 
-      {/* 2. 인벤토리 */}
+      {/* 인벤토리 */}
       <div className="inventory-box">
         <div
           style={{
@@ -294,7 +324,6 @@ const PolishingGame = ({ userSession }) => {
         </div>
       </div>
 
-      {/* 3. 아이템 선택 모달 */}
       <MiniItemPicker
         activeModal={isPickerOpen}
         close={() => setIsPickerOpen(false)}
