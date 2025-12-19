@@ -24,8 +24,6 @@ const PolishingGame = ({ userSession }) => {
 
   const [gameState, setGameState] = useState("IDLE");
   const [resultData, setResultData] = useState({ type: "", msg: "" });
-
-  // ★ [NEW] 데이터 처리 중 중복 클릭 방지용 잠금 장치
   const [isProcessing, setIsProcessing] = useState(false);
 
   const timerRef = useRef(null);
@@ -60,6 +58,13 @@ const PolishingGame = ({ userSession }) => {
       weapon_id: item.id.toString(),
       image_url: imgUrl,
       polish_level: 0,
+      // ★ 초기 통계값 0으로 설정
+      max_level: 0,
+      total_try: 0,
+      success_cnt: 0,
+      maintain_cnt: 0,
+      drop_cnt: 0,
+      break_cnt: 0,
     };
 
     const { data, error } = await supabase
@@ -74,8 +79,17 @@ const PolishingGame = ({ userSession }) => {
   };
 
   const equipFromInventory = (dbItem) => {
-    // 게임 중이거나 처리 중일 땐 교체 금지
-    if (gameState !== "IDLE" || isProcessing) return;
+    if (gameState === "POLISHING") return;
+
+    if (gameState === "RESULT" || isProcessing) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setGameState("IDLE");
+      setIsProcessing(false);
+    }
+
     setCurrentWeapon(dbItem);
   };
 
@@ -93,23 +107,19 @@ const PolishingGame = ({ userSession }) => {
     }
   };
 
-  // --- 연마 시작 ---
   const handlePolish = () => {
-    // ★ [핵심] 이미 처리 중이거나 게임 중이면 절대 실행 안 함
     if (!currentWeapon || gameState !== "IDLE" || isProcessing) return;
     if (currentWeapon.polish_level >= 10) return alert("이미 최고 단계입니다!");
 
     setGameState("POLISHING");
-    setIsProcessing(true); // 잠금 시작
+    setIsProcessing(true);
 
     timerRef.current = setTimeout(() => {
       calculateResult();
     }, 1500);
   };
 
-  // --- 스킵 기능 ---
   const handleSkip = (e) => {
-    // ★ [핵심] 이벤트 전파 중단 (이 클릭이 버튼까지 뚫고 내려가지 않게 함)
     if (e) e.stopPropagation();
 
     if (gameState === "POLISHING") {
@@ -131,10 +141,25 @@ const PolishingGame = ({ userSession }) => {
     let newLevel = level;
     let isBroken = false;
 
+    // 통계 업데이트용 변수들
+    let {
+      max_level = 0,
+      total_try = 0,
+      success_cnt = 0,
+      maintain_cnt = 0,
+      drop_cnt = 0,
+      break_cnt = 0,
+    } = currentWeapon;
+
+    total_try += 1; // 시도 횟수는 무조건 증가
+
     if (rand < succRate) {
       type = "SUCCESS";
       msg = "연마 성공!";
       newLevel = level + 1;
+      success_cnt += 1;
+      // 최고 기록 갱신 (현재 수치보다 높으면)
+      if (newLevel > max_level) max_level = newLevel;
       if (newLevel === 10) {
         type = "MAX";
         msg = "✨ 10단계 달성! ✨";
@@ -142,57 +167,65 @@ const PolishingGame = ({ userSession }) => {
     } else if (rand < succRate + mainRate) {
       type = "MAINTAIN";
       msg = "연마 유지";
+      maintain_cnt += 1;
     } else if (rand < succRate + mainRate + dropRate) {
       type = "DROP";
       msg = "연마 하락...";
       newLevel = Math.max(0, level - 1);
+      drop_cnt += 1;
     } else {
       type = "BREAK";
       msg = "장비 파괴!!!";
       newLevel = 0;
+      break_cnt += 1;
       isBroken = true;
     }
 
     setResultData({ type, msg });
     setGameState("RESULT");
 
-    // DB 업데이트가 필요하다면 수행
-    if (newLevel !== level || isBroken) {
-      // 낙관적 업데이트 (UI 먼저 갱신) -> 광클 시 반응 속도 향상
-      setCurrentWeapon((prev) => ({ ...prev, polish_level: newLevel }));
-      setInventory((prev) =>
-        prev.map((item) =>
-          item.id === currentWeapon.id
-            ? { ...item, polish_level: newLevel }
-            : item
-        )
-      );
+    // ★ [핵심] 변경된 모든 데이터(레벨 + 통계)를 한 번에 업데이트
+    const updatedStats = {
+      polish_level: newLevel,
+      max_level,
+      total_try,
+      success_cnt,
+      maintain_cnt,
+      drop_cnt,
+      break_cnt,
+    };
 
-      // 백그라운드에서 DB 저장 (await를 쓰지 않아도 됨, UI는 이미 갱신됐으니까)
-      supabase
-        .from("minigame_inventory")
-        .update({ polish_level: newLevel })
-        .eq("id", currentWeapon.id)
-        .then(({ error }) => {
-          if (error) console.error("DB Update Failed:", error);
-        });
-    }
+    // 낙관적 UI 업데이트 (숫자가 즉시 올라가게)
+    const nextWeaponState = { ...currentWeapon, ...updatedStats };
+    setCurrentWeapon(nextWeaponState);
+    setInventory((prev) =>
+      prev.map((item) =>
+        item.id === currentWeapon.id ? nextWeaponState : item
+      )
+    );
 
-    // 결과창 닫기 타이머
+    // DB 저장 (백그라운드)
+    supabase
+      .from("minigame_inventory")
+      .update(updatedStats)
+      .eq("id", currentWeapon.id)
+      .then(({ error }) => {
+        if (error) console.error("DB Update Failed:", error);
+      });
+
     setTimeout(
       () => {
         setGameState("IDLE");
-        setIsProcessing(false); // ★ 모든 처리가 끝나야 잠금 해제
+        setIsProcessing(false);
       },
       type === "MAX" ? 4000 : 1500
     );
   };
 
-  // 결과창 강제 닫기 (클릭 시)
   const handleCloseResult = (e) => {
-    if (e) e.stopPropagation(); // 투과 방지
+    if (e) e.stopPropagation();
     setGameState("IDLE");
-    setIsProcessing(false); // 잠금 해제
+    setIsProcessing(false);
   };
 
   return (
@@ -204,10 +237,10 @@ const PolishingGame = ({ userSession }) => {
 
       {/* 메인 스테이지 */}
       <div className="polishing-stage">
+        {/* 무기 슬롯 */}
         <div
           className="weapon-slot"
           onClick={() => {
-            // 게임 중엔 무기 교체창 안 열림
             if (!currentWeapon || gameState !== "IDLE") {
               if (!currentWeapon) setIsPickerOpen(true);
             }
@@ -228,11 +261,57 @@ const PolishingGame = ({ userSession }) => {
           )}
         </div>
 
-        {/* 연마 중 오버레이 (스킵) */}
+        {/* ★ [NEW] 우측 통계판 (무기가 선택되었을 때만 표시) */}
+        {currentWeapon && (
+          <div className="stats-board">
+            <div className="stats-title">📊 강화 기록</div>
+            <div className="stats-row highlight">
+              <span>최고 달성</span>
+              <span className="stats-val" style={{ color: "#00ffff" }}>
+                +{currentWeapon.max_level || 0}
+              </span>
+            </div>
+            <div className="stats-row">
+              <span>총 시도</span>
+              <span className="stats-val">
+                {currentWeapon.total_try || 0}회
+              </span>
+            </div>
+            <hr
+              style={{
+                border: "0",
+                borderTop: "1px solid #444",
+                margin: "8px 0",
+              }}
+            />
+            <div className="stats-row">
+              <span style={{ color: "#ffcc00" }}>성공</span>
+              <span className="stats-val">
+                {currentWeapon.success_cnt || 0}
+              </span>
+            </div>
+            <div className="stats-row">
+              <span style={{ color: "#ff8800" }}>유지</span>
+              <span className="stats-val">
+                {currentWeapon.maintain_cnt || 0}
+              </span>
+            </div>
+            <div className="stats-row">
+              <span style={{ color: "#ff5555" }}>하락</span>
+              <span className="stats-val">{currentWeapon.drop_cnt || 0}</span>
+            </div>
+            <div className="stats-row">
+              <span style={{ color: "#880000" }}>파괴</span>
+              <span className="stats-val">{currentWeapon.break_cnt || 0}</span>
+            </div>
+          </div>
+        )}
+
+        {/* 오버레이 (스킵/결과) */}
         {gameState === "POLISHING" && (
           <div
             className="result-overlay"
-            onClick={handleSkip} // ★ 여기stopPropagation 적용됨
+            onClick={handleSkip}
             style={{ cursor: "pointer" }}
           >
             <div style={{ color: "#fff", fontSize: "1.5rem" }}>
@@ -246,7 +325,6 @@ const PolishingGame = ({ userSession }) => {
           </div>
         )}
 
-        {/* 결과 오버레이 (닫기) */}
         {gameState === "RESULT" && (
           <div
             className="result-overlay"
@@ -257,7 +335,7 @@ const PolishingGame = ({ userSession }) => {
                   : "rgba(0,0,0,0.85)",
               cursor: "pointer",
             }}
-            onClick={handleCloseResult} // ★ 여기도 stopPropagation 적용됨
+            onClick={handleCloseResult}
           >
             <div className={`result-text res-${resultData.type.toLowerCase()}`}>
               {resultData.msg}
@@ -273,7 +351,6 @@ const PolishingGame = ({ userSession }) => {
         <button
           className="polish-btn"
           onClick={handlePolish}
-          // ★ isProcessing이 true면 버튼이 비활성화됨 (광클 원천 봉쇄)
           disabled={
             !currentWeapon ||
             gameState !== "IDLE" ||

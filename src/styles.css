@@ -4033,3 +4033,62 @@ body {
     transform: translate(1px, -2px) rotate(-1deg);
   }
 }
+
+/* ... 기존 미니게임 CSS 아래에 추가 ... */
+
+/* 통계판 (우측 배치) */
+.stats-board {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 15px;
+  width: 180px;
+  backdrop-filter: blur(5px);
+  z-index: 20;
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.stats-title {
+  color: #ffcc00;
+  font-size: 0.9rem;
+  font-weight: bold;
+  border-bottom: 1px solid #555;
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+  color: #ccc;
+}
+.stats-val {
+  font-weight: bold;
+  color: #fff;
+}
+
+/* 최고 기록 강조 */
+.stats-row.highlight {
+  color: #00ffff;
+  margin-bottom: 12px;
+}
+.stats-row.highlight .stats-val {
+  text-shadow: 0 0 5px #00ffff;
+}
+
+/* 모바일 대응 (통계판을 아래로) */
+@media (max-width: 600px) {
+  .stats-board {
+    position: static;
+    transform: none;
+    width: 90%;
+    margin-top: 15px;
+  }
+}
