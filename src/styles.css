@@ -4185,64 +4185,52 @@ body {
 }
 
 /* ========================================= */
-/* 🛠️ 게시판 테이블 스타일 (최종 복구판) */
+/* 🛠️ 게시판 테이블 스타일 (완벽 정렬판) */
 /* ========================================= */
 
 .cafe-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
-  /* table-layout: fixed를 유지하되, 너비 설정을 CSS에 집중합니다 */
-  table-layout: fixed;
+  table-layout: fixed; /* 칸 너비 고정 */
 }
 
-/* --- [1] 컬럼 너비 설정 (여기서만 관리합니다) --- */
-/* 1. 번호/공지 (너무 좁지 않게 80px 확보) */
+/* 1. 컬럼 너비 설정 (고정값) */
 .cafe-table th:nth-child(1),
 .cafe-table td:nth-child(1) {
-  width: 80px;
-}
-
-/* 2. 제목 (나머지 공간 자동 할당) */
+  width: 60px;
+} /* 번호 */
 .cafe-table th:nth-child(2),
 .cafe-table td:nth-child(2) {
   width: auto;
-}
-
-/* 3. 작성자 */
+} /* 제목 (나머지) */
 .cafe-table th:nth-child(3),
 .cafe-table td:nth-child(3) {
   width: 120px;
-}
-
-/* 4. 날짜 */
+} /* 작성자 */
 .cafe-table th:nth-child(4),
 .cafe-table td:nth-child(4) {
   width: 100px;
-}
-
-/* 5. 조회, 추천 */
+} /* 날짜 */
 .cafe-table th:nth-child(5),
-.cafe-table td:nth-child(5),
+.cafe-table td:nth-child(5) {
+  width: 60px;
+} /* 조회 */
 .cafe-table th:nth-child(6),
 .cafe-table td:nth-child(6) {
-  width: 70px;
-}
+  width: 60px;
+} /* 추천 */
 
-/* --- [2] 셀 내부 스타일 (줄바꿈 방지) --- */
 .cafe-table th,
 .cafe-table td {
   padding: 12px 5px;
   border-bottom: 1px solid #222;
   text-align: center;
   vertical-align: middle;
-
-  /* ★ 핵심: 글자가 길어도 절대 줄바꿈 하지 마! */
-  white-space: nowrap !important;
+  white-space: nowrap; /* 줄바꿈 금지 */
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .cafe-table th {
   border-bottom: 1px solid #444;
   color: #aaa;
@@ -4254,63 +4242,19 @@ body {
   background-color: #1a1a1a;
 }
 
-/* --- [3] 제목 칸 정렬 --- */
+/* 제목 칸은 왼쪽 정렬 */
 .col-title {
   text-align: left !important;
-  padding-left: 15px !important;
-
-  /* Flexbox로 뱃지와 제목 가로 정렬 */
-  display: flex !important;
-  align-items: center;
-  height: 100%;
-  gap: 8px; /* 뱃지와 제목 사이 간격 */
+  padding-left: 10px !important;
 }
 
-/* 제목 텍스트 */
-.post-title-text {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1; /* 남은 공간 차지 */
-  color: #fff;
-  cursor: pointer;
+/* ★ 상단 고정 공지사항 전용 스타일 */
+.notice-pinned-row {
+  background-color: rgba(255, 204, 0, 0.05); /* 아주 연한 금색 배경 */
+  border-bottom: 1px solid #333;
 }
-.post-title-text:hover {
-  color: #ffcc00;
-  text-decoration: underline;
-}
-
-/* --- [4] 뱃지 스타일 (찌그러짐 방지) --- */
-.notice-badge,
-.best-badge {
-  /* ★ 중요: 공간이 좁아도 절대 찌그러지지 않음 */
-  flex-shrink: 0;
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-weight: bold;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  text-align: center;
-}
-
-.notice-badge {
-  background: #ff5a6a;
-  color: #fff;
-}
-.best-badge {
-  background: #ffcc00;
-  color: #000;
-}
-
-/* 공지사항 행 강조 */
-.notice-row {
-  background-color: rgba(255, 90, 106, 0.08);
-}
-.notice-row td {
-  color: #ffdbe0;
-  font-weight: bold;
+.notice-pinned-row:hover {
+  background-color: rgba(255, 204, 0, 0.1);
 }
 
 /* 인기글(Best 5) 박스 (이건 그대로 두셔도 됩니다) */

@@ -3251,6 +3251,14 @@ export default function App() {
               <div className="lnb-inner">
                 <button
                   className={`lnb-tab ${
+                    activeBoardTab === null ? "active" : ""
+                  }`}
+                  onClick={() => setActiveBoardTab(null)}
+                >
+                  전체
+                </button>
+                <button
+                  className={`lnb-tab ${
                     activeBoardTab === "NOTICE" ? "active" : ""
                   }`}
                   onClick={() => setActiveBoardTab("NOTICE")}
@@ -3263,7 +3271,7 @@ export default function App() {
                   }`}
                   onClick={() => setActiveBoardTab("GUIDE")}
                 >
-                  공략 게시판
+                  공략게시판
                 </button>
                 <button
                   className={`lnb-tab ${

@@ -3,7 +3,6 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
 
-// 관리자 ID (본인 UUID 확인 필요)
 const ADMIN_ID = "2f9ff0d3-4b34-42dd-9be6-ba4fea6aa3ff";
 
 const BoardPage = ({ setActivePage, userStats, category }) => {
@@ -13,53 +12,38 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [currentPost, setCurrentPost] = useState(null);
   const [comments, setComments] = useState([]);
   const [votes, setVotes] = useState({ likes: 0, dislikes: 0, myVote: null });
-
   const [session, setSession] = useState(null);
   const [sortOrder, setSortOrder] = useState("LATEST");
-
   const [form, setForm] = useState({ title: "", content: "", isNotice: false });
   const [editingId, setEditingId] = useState(null);
   const [commentInput, setCommentInput] = useState("");
   const quillRef = useRef(null);
-
-  // ★ [핵심 1] 내 닉네임을 저장할 공간 (초기값: 모험가)
   const [myNickname, setMyNickname] = useState("모험가");
 
   useEffect(() => {
-    // 1. 세션 확인 및 닉네임 로딩
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) {
-        // ★ 세션이 있으면 DB에서 내 프로필(닉네임)을 직접 가져옴!
-        fetchMyProfile(session.user.id);
-      }
+      if (session) fetchMyProfile(session.user.id);
     });
   }, []);
 
-  // ★ [핵심 2] DB에서 'profiles' 테이블 조회 함수
   const fetchMyProfile = async (userId) => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("profiles")
         .select("nickname")
         .eq("id", userId)
         .single();
-
-      if (data && data.nickname) {
-        console.log("DB에서 가져온 닉네임:", data.nickname);
-        setMyNickname(data.nickname); // 상태 업데이트 (MODAM)
-      }
+      if (data?.nickname) setMyNickname(data.nickname);
     } catch (e) {
-      console.error("프로필 로딩 에러:", e);
+      console.error(e);
     }
   };
 
   useEffect(() => {
-    // 뒤로가기 히스토리 초기화
     window.history.replaceState({ menu: "BOARD", view: "LIST" }, "");
-
     const handlePopState = (event) => {
-      if (event.state && event.state.view) {
+      if (event.state?.view) {
         setView(event.state.view);
         if (event.state.view === "LIST") setCurrentPost(null);
       }
@@ -92,7 +76,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       if (error) throw error;
       setPosts(data || []);
     } catch (error) {
-      console.error("게시글 로딩 실패:", error);
+      console.error(error);
     }
   };
 
@@ -149,13 +133,9 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const handleWriteSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!form.title.trim()) return alert("제목을 입력해주세요.");
-
     const textOnly = form.content.replace(/<[^>]*>?/gm, "").trim();
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
-
-    // ★ [핵심 3] 글 쓸 때 가져온 'myNickname'을 사용
-    const writerNickname = myNickname || "모험가";
 
     const payload = {
       title: form.title,
@@ -178,7 +158,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           {
             ...payload,
             user_id: session.user.id,
-            nickname: writerNickname, // MODAM이 들어갑니다!
+            nickname: myNickname || "모험가",
             view_count: 0,
             like_count: 0,
           },
@@ -189,7 +169,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       handleGoList();
     } catch (error) {
       alert("작성 실패: " + error.message);
-      console.error(error);
     }
   };
 
@@ -221,13 +200,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase.from("post_votes").insert([
-        {
-          post_id: currentPost.id,
-          user_id: session.user.id,
-          vote_type: type,
-        },
-      ]);
+      await supabase
+        .from("post_votes")
+        .insert([
+          {
+            post_id: currentPost.id,
+            user_id: session.user.id,
+            vote_type: type,
+          },
+        ]);
     }
     const { count } = await supabase
       .from("post_votes")
@@ -248,14 +229,16 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const handleCommentSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!commentInput.trim()) return;
-    const { error } = await supabase.from("comments").insert([
-      {
-        post_id: currentPost.id,
-        content: commentInput,
-        user_id: session.user.id,
-        nickname: myNickname || "모험가", // 댓글도 내 닉네임으로!
-      },
-    ]);
+    const { error } = await supabase
+      .from("comments")
+      .insert([
+        {
+          post_id: currentPost.id,
+          content: commentInput,
+          user_id: session.user.id,
+          nickname: myNickname || "모험가",
+        },
+      ]);
     if (!error) {
       setCommentInput("");
       fetchComments(currentPost.id);
@@ -308,8 +291,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     []
   );
 
-  // ★ [핵심 4] 레이아웃 깨짐의 주범이었던 TableColGroup 삭제됨!
-  // 이제 styles.css가 테이블 너비를 전적으로 제어합니다.
+  // ★ [핵심] 렌더링용 변수 분리
+  // 1. 공지사항만 필터링 (상단 고정용)
+  const noticePosts = posts.filter((p) => p.is_notice);
+
+  // 2. 전체 목록은 'posts' 그대로 사용 (공지사항도 시간순으로 여기에 포함됨)
 
   return (
     <div className="board-container">
@@ -340,14 +326,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             <div className="best-posts-area">
               <span className="best-label">🏆 주간 베스트 인기글</span>
               <table className="cafe-table">
-                {/* colgroup 제거됨 */}
                 <tbody>
                   {bestPosts.map((post, idx) => (
                     <tr key={post.id} onClick={() => fetchPostDetail(post)}>
                       <td style={{ color: "#ffcc00", fontWeight: "bold" }}>
                         {idx + 1}
                       </td>
-                      <td className="col-title">
+                      <td className="col-title" style={{ textAlign: "left" }}>
                         <span className="best-badge">BEST</span>
                         <span className="post-title-text">{post.title}</span>
                       </td>
@@ -394,7 +379,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           </div>
 
           <table className="cafe-table">
-            {/* ★ [핵심 5] colgroup 태그 삭제됨 (충돌 해결) */}
             <thead>
               <tr>
                 <th>번호</th>
@@ -406,53 +390,55 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               </tr>
             </thead>
             <tbody>
-              {/* 공지사항 */}
-              {posts
-                .filter((p) => p.is_notice)
-                .map((post) => (
-                  <tr
-                    key={post.id}
-                    className="notice-row"
-                    onClick={() => fetchPostDetail(post)}
-                  >
-                    <td>
-                      <span style={{ color: "#ff5a6a", fontWeight: "bold" }}>
-                        공지
-                      </span>
-                    </td>
-                    <td className="col-title">
-                      <span className="notice-badge">필독</span>
-                      <span
-                        className="post-title-text"
-                        style={{ fontWeight: "bold" }}
-                      >
-                        {post.title}
-                      </span>
-                    </td>
-                    <td>{post.nickname}</td>
-                    <td>{formatDate(post.created_at)}</td>
-                    <td>{post.view_count}</td>
-                    <td>{post.like_count}</td>
-                  </tr>
-                ))}
-              {/* 일반글 */}
-              {posts
-                .filter((p) => !p.is_notice)
-                .map((post) => (
-                  <tr key={post.id} onClick={() => fetchPostDetail(post)}>
-                    <td>{post.id.toString().slice(-4)}</td>
-                    <td className="col-title">
-                      <span className="post-title-text">{post.title}</span>
-                      {post.content.includes("<img") && (
-                        <span style={{ marginLeft: "5px" }}>📷</span>
-                      )}
-                    </td>
-                    <td>{post.nickname}</td>
-                    <td>{formatDate(post.created_at)}</td>
-                    <td>{post.view_count}</td>
-                    <td>{post.like_count}</td>
-                  </tr>
-                ))}
+              {/* 1. 상단 고정 공지 (복사본) */}
+              {/* ★ 일반 글과 완전히 동일한 HTML 구조 유지 (정렬 깨짐 방지) */}
+              {noticePosts.map((post) => (
+                <tr
+                  key={`notice-${post.id}`}
+                  className="notice-pinned-row"
+                  onClick={() => fetchPostDetail(post)}
+                >
+                  {/* 번호 칸에만 '공지'라고 써줌 */}
+                  <td style={{ color: "#ff5a6a", fontWeight: "bold" }}>공지</td>
+
+                  {/* 제목 칸: 배지 없이 제목만 깔끔하게 (일반글과 줄맞춤) */}
+                  <td className="col-title" style={{ textAlign: "left" }}>
+                    <span
+                      className="post-title-text"
+                      style={{ fontWeight: "bold", color: "#ffcc00" }}
+                    >
+                      {post.title}
+                    </span>
+                    {post.content.includes("<img") && (
+                      <span style={{ marginLeft: "5px" }}>📷</span>
+                    )}
+                  </td>
+
+                  {/* 나머지는 똑같이 */}
+                  <td>{post.nickname}</td>
+                  <td>{formatDate(post.created_at)}</td>
+                  <td>{post.view_count}</td>
+                  <td>{post.like_count}</td>
+                </tr>
+              ))}
+
+              {/* 2. 일반 전체 목록 (공지사항도 여기에 시간순으로 또 나옴) */}
+              {posts.map((post) => (
+                <tr key={post.id} onClick={() => fetchPostDetail(post)}>
+                  <td>{post.id.toString().slice(-4)}</td>
+                  <td className="col-title" style={{ textAlign: "left" }}>
+                    <span className="post-title-text">{post.title}</span>
+                    {post.content.includes("<img") && (
+                      <span style={{ marginLeft: "5px" }}>📷</span>
+                    )}
+                  </td>
+                  <td>{post.nickname}</td>
+                  <td>{formatDate(post.created_at)}</td>
+                  <td>{post.view_count}</td>
+                  <td>{post.like_count}</td>
+                </tr>
+              ))}
+
               {posts.length === 0 && (
                 <tr>
                   <td colSpan="6" style={{ padding: "50px", color: "#666" }}>
@@ -465,6 +451,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         </>
       )}
 
+      {/* WRITE, DETAIL 화면은 기존과 동일하므로 생략 없이 유지 */}
       {view === "WRITE" && (
         <div className="write-container">
           <h2
@@ -489,8 +476,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                 ? "공지사항"
                 : category === "GUIDE"
                 ? "공략"
-                : category === "FREE"
-                ? "자유"
                 : "자유"}
               ]
             </span>
