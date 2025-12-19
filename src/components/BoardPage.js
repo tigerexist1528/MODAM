@@ -45,14 +45,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [session, setSession] = useState(null);
   const [sortOrder, setSortOrder] = useState("LATEST");
 
-  // ★ categoryState 추가: 글 쓸 때 선택한 카테고리를 저장
+  // 폼 상태
   const [form, setForm] = useState({
     title: "",
     content: "",
     isNotice: false,
     category: "FREE",
   });
-
   const [editingId, setEditingId] = useState(null);
   const [commentInput, setCommentInput] = useState("");
   const quillRef = useRef(null);
@@ -102,14 +101,12 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     try {
       let query = supabase.from("posts").select("*");
       if (category) query = query.eq("category", category);
-
       if (order === "LATEST")
         query = query.order("created_at", { ascending: false });
       else if (order === "VIEW")
         query = query.order("view_count", { ascending: false });
       else if (order === "LIKE")
         query = query.order("like_count", { ascending: false });
-
       const { data, error } = await query;
       if (error) throw error;
       setPosts(data || []);
@@ -125,7 +122,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         .select("*")
         .order("like_count", { ascending: false })
         .limit(5);
-      // 베스트 게시글도 현재 카테고리에 맞춰서 필터링 (전체면 전체에서, 공략이면 공략에서)
       if (category) query = query.eq("category", category);
       const { data } = await query;
       setBestPosts(data || []);
@@ -169,15 +165,16 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
-  // ★ [수정됨] 글 등록/수정 핸들러
+  // ★ [핵심 수정] 글 등록/수정 로직 강화
   const handleWriteSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!form.title.trim()) return alert("제목을 입력해주세요.");
+
     const textOnly = form.content.replace(/<[^>]*>?/gm, "").trim();
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
-    // form.category가 있으면 쓰고, 없으면 현재 탭(category) 쓰되 그것도 없으면 FREE
+    // 카테고리 결정: 폼 선택값 > 현재 탭 > FREE
     const targetCategory = form.category || category || "FREE";
 
     const payload = {
@@ -189,19 +186,28 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
 
     try {
       if (editingId) {
-        // [수정 로직] 내 글인지 확인 (user_id)
-        const { error, count } = await supabase
+        // [수정]
+        // ★ .select()를 붙여야 업데이트된 데이터를 반환받을 수 있습니다.
+        const { data, error } = await supabase
           .from("posts")
           .update(payload)
           .eq("id", editingId)
-          .eq("user_id", session.user.id) // 본인 확인
-          .select(); // 업데이트된 행 반환
+          .eq("user_id", session.user.id) // 본인 글인지 이중 확인
+          .select();
 
         if (error) throw error;
-        // count체크는 Supabase 버전에 따라 다를 수 있으나 에러가 없으면 성공 간주
+
+        // ★ [중요] 실제로 업데이트된 행이 있는지 확인 (0개면 실패)
+        if (!data || data.length === 0) {
+          alert(
+            "수정 실패: 본인의 글이 아니거나 이미 삭제된 글일 수 있습니다."
+          );
+          return;
+        }
+
         alert("수정되었습니다.");
       } else {
-        // [등록 로직]
+        // [등록]
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
@@ -214,9 +220,10 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         if (error) throw error;
         alert("등록되었습니다.");
       }
+      // 성공 시 목록으로 이동
       handleGoList();
     } catch (error) {
-      alert("작성 실패: " + error.message);
+      alert("작업 실패: " + error.message);
     }
   };
 
@@ -236,7 +243,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const handleGoList = () => {
-    // 폼 초기화 (카테고리도 초기화)
     setForm({ title: "", content: "", isNotice: false, category: "FREE" });
     setEditingId(null);
     setCurrentPost(null);
@@ -332,8 +338,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     () => ({
       toolbar: {
         container: [
-          [{ font: Font.whitelist }], // 폰트 선택
-          [{ size: Size.whitelist }], // 크기 선택
+          [{ font: Font.whitelist }],
+          [{ size: Size.whitelist }],
           [{ header: [1, 2, 3, false] }],
           ["bold", "italic", "underline", "strike"],
           [{ color: [] }, { background: [] }],
@@ -423,7 +429,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               className="btn-gold"
               onClick={() => {
                 if (!session) return alert("로그인이 필요합니다.");
-                // 글쓰기 누를 때 초기화 (기본값 설정)
                 setForm({
                   title: "",
                   content: "",
@@ -522,7 +527,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             <select
               className="category-select"
               value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value })}
+              // ★ [안전장치] 함수형 업데이트 사용
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm((prev) => ({ ...prev, category: val }));
+              }}
             >
               <option value="FREE">💬 자유 게시판</option>
               <option value="GUIDE">📘 공략 게시판</option>
@@ -542,9 +551,10 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                 <input
                   type="checkbox"
                   checked={form.isNotice}
-                  onChange={(e) =>
-                    setForm({ ...form, isNotice: e.target.checked })
-                  }
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setForm((prev) => ({ ...prev, isNotice: checked }));
+                  }}
                 />{" "}
                 상단 공지 고정
               </label>
@@ -555,7 +565,10 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             type="text"
             placeholder="제목을 입력해 주세요."
             value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) => {
+              const val = e.target.value;
+              setForm((prev) => ({ ...prev, title: val }));
+            }}
           />
 
           <div
@@ -570,7 +583,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               ref={quillRef}
               theme="snow"
               value={form.content}
-              onChange={(val) => setForm({ ...form, content: val })}
+              // ★ [안전장치] 에디터 내용 변경 시 함수형 업데이트로 상태 최신화 보장
+              onChange={(val) => setForm((prev) => ({ ...prev, content: val }))}
               modules={modules}
               style={{ height: "450px", color: "#000" }}
               placeholder="내용을 입력하세요."
@@ -628,12 +642,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                   <span
                     style={{ cursor: "pointer", color: "#fff" }}
                     onClick={() => {
-                      /* ★ [핵심 수정] 수정 버튼 누를 때 category 정보도 form에 세팅! */
                       setForm({
                         title: currentPost.title,
                         content: currentPost.content,
                         isNotice: currentPost.is_notice,
-                        category: currentPost.category, // 이게 빠져서 수정이 안됐던 것!
+                        category: currentPost.category,
                       });
                       setEditingId(currentPost.id);
                       setView("WRITE");
@@ -651,7 +664,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               )}
             </div>
           </div>
-          {/* 폰트 적용된 내용 표시 */}
           <div
             className="detail-content ql-editor"
             dangerouslySetInnerHTML={{ __html: currentPost.content }}
