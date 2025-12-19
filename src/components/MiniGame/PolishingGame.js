@@ -1,20 +1,72 @@
-import React, { useEffect, useState, useRef } from "react"; // ★ useRef 추가
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "../../utils/supabaseClient";
 import MiniItemPicker from "./MiniItemPicker";
-import { GET_ITEM_ICON_LOCAL } from "../../utils/data"; // 이미지 유틸 가져오기
+import { GET_ITEM_ICON_LOCAL } from "../../utils/data";
 
-// ★ 연마 확률 설정 (0~9단계에서 시도)
+// ★ 연마 확률표 (표 기반)
+// n-1 -> n 단계 시도 확률 [성공, 유지, 하락, 파괴]
+// 기본, 1차 실패(하락) 후, 2차 이상 실패(하락) 후
 const PROBABILITIES = {
-  0: [45, 55, 0, 0], // 0->1
-  1: [30, 40, 30, 0], // 1->2
-  2: [20, 50, 30, 0], // 2->3
-  3: [20, 45, 30, 5], // 3->4
-  4: [17, 44, 30, 9], // 4->5
-  5: [15, 42, 30, 13], // 5->6
-  6: [10, 60, 0, 30], // 6->7
-  7: [7, 53, 0, 40], // 7->8
-  8: [3, 37, 0, 60], // 8->9
-  9: [1, 29, 0, 70], // 9->10
+  1: {
+    // 0 -> 1
+    0: [45, 55, 0, 0],
+    1: [45, 55, 0, 0],
+    2: [45, 55, 0, 0],
+  },
+  2: {
+    // 1 -> 2
+    0: [30, 40, 30, 0],
+    1: [30, 50, 20, 0],
+    2: [30, 70, 0, 0],
+  },
+  3: {
+    // 2 -> 3
+    0: [20, 50, 30, 0],
+    1: [20, 60, 20, 0],
+    2: [20, 80, 0, 0],
+  },
+  4: {
+    // 3 -> 4
+    0: [20, 45, 30, 5],
+    1: [20, 55, 20, 5],
+    2: [20, 75, 0, 5],
+  },
+  5: {
+    // 4 -> 5
+    0: [17, 44, 30, 9],
+    1: [17, 54, 20, 9],
+    2: [17, 74, 0, 9],
+  },
+  6: {
+    // 5 -> 6
+    0: [15, 42, 30, 13],
+    1: [15, 52, 20, 13],
+    2: [15, 72, 0, 13],
+  },
+  7: {
+    // 6 -> 7
+    0: [10, 60, 0, 30],
+    1: [10, 60, 0, 30],
+    2: [10, 60, 0, 30],
+  },
+  8: {
+    // 7 -> 8
+    0: [7, 53, 0, 40],
+    1: [7, 53, 0, 40],
+    2: [7, 53, 0, 40],
+  },
+  9: {
+    // 8 -> 9
+    0: [3, 37, 0, 60],
+    1: [3, 37, 0, 60],
+    2: [3, 37, 0, 60],
+  },
+  10: {
+    // 9 -> 10
+    0: [1, 29, 0, 70],
+    1: [1, 29, 0, 70],
+    2: [1, 29, 0, 70],
+  },
 };
 
 const PolishingGame = ({ userSession }) => {
@@ -50,7 +102,6 @@ const PolishingGame = ({ userSession }) => {
   };
 
   const handleSelectWeapon = async (item) => {
-    // 6개 꽉 차면 경고
     if (inventory.length >= 6) {
       alert("보관함이 가득 찼습니다! (최대 6개)");
       return;
@@ -64,6 +115,7 @@ const PolishingGame = ({ userSession }) => {
       weapon_id: item.id.toString(),
       image_url: imgUrl,
       polish_level: 0,
+      fail_streak_level: 0, // ★ 실패 보정 단계 초기화
       max_level: 0,
       total_try: 0,
       success_cnt: 0,
@@ -148,12 +200,18 @@ const PolishingGame = ({ userSession }) => {
     if (!current) return;
 
     const level = current.polish_level;
-    const [succRate, mainRate, dropRate, breakRate] = PROBABILITIES[level];
+    const targetLevel = level + 1; // 목표 레벨
+    const streak = current.fail_streak_level || 0; // 현재 실패 보정 단계
+
+    // ★ 확률표에서 현재 상황에 맞는 확률 가져오기
+    const [succRate, mainRate, dropRate, breakRate] =
+      PROBABILITIES[targetLevel][streak];
 
     const rand = Math.random() * 100;
     let type = "";
     let msg = "";
     let newLevel = level;
+    let newStreak = streak;
     let isBroken = false;
 
     let {
@@ -177,21 +235,25 @@ const PolishingGame = ({ userSession }) => {
         type = "MAX";
         msg = "✨ 10단계 달성! ✨";
       }
+      newStreak = 0; // 성공 시 보정 초기화
     } else if (rand < succRate + mainRate) {
       type = "MAINTAIN";
       msg = "연마 유지";
       maintain_cnt += 1;
+      newStreak = 0; // 유지 시 보정 초기화
     } else if (rand < succRate + mainRate + dropRate) {
       type = "DROP";
       msg = "연마 하락...";
       newLevel = Math.max(0, level - 1);
       drop_cnt += 1;
+      newStreak = Math.min(2, streak + 1); // ★ 하락 시 보정 단계 증가 (최대 2단계)
     } else {
       type = "BREAK";
       msg = "장비 파괴!!!";
       newLevel = 0;
       break_cnt += 1;
       isBroken = true;
+      newStreak = 0; // 파괴 시 보정 초기화
     }
 
     setResultData({ type, msg });
@@ -200,6 +262,7 @@ const PolishingGame = ({ userSession }) => {
     const updatedStats = {
       ...current,
       polish_level: newLevel,
+      fail_streak_level: newStreak,
       max_level,
       total_try,
       success_cnt,
@@ -218,6 +281,7 @@ const PolishingGame = ({ userSession }) => {
       .from("minigame_inventory")
       .update({
         polish_level: newLevel,
+        fail_streak_level: newStreak,
         max_level,
         total_try,
         success_cnt,
@@ -254,6 +318,13 @@ const PolishingGame = ({ userSession }) => {
 
       {/* 메인 스테이지 */}
       <div className="polishing-stage">
+        {/* ★ 실패 보정 배지 */}
+        {currentWeapon && currentWeapon.fail_streak_level > 0 && (
+          <div className="fail-streak-badge">
+            실패확률 감소 {currentWeapon.fail_streak_level}단계 적용 중
+          </div>
+        )}
+
         <div
           className="weapon-slot"
           onClick={() => {
@@ -277,6 +348,7 @@ const PolishingGame = ({ userSession }) => {
           )}
         </div>
 
+        {/* 통계판 */}
         {currentWeapon && (
           <div className="stats-board">
             <div className="stats-title">📊 강화 기록</div>
@@ -322,45 +394,47 @@ const PolishingGame = ({ userSession }) => {
           </div>
         )}
 
-        {gameState === "POLISHING" && (
-          <div
-            className="result-overlay"
-            onClick={handleSkip}
-            style={{ cursor: "pointer" }}
-          >
-            <div style={{ color: "#fff", fontSize: "1.5rem" }}>
-              🔨 연마중...
-            </div>
-            <div
-              style={{ color: "#888", fontSize: "0.8rem", marginTop: "10px" }}
-            >
-              (클릭하여 스킵)
-            </div>
-          </div>
-        )}
-
-        {gameState === "RESULT" && (
-          <div
-            className="result-overlay"
-            style={{
-              background:
-                resultData.type === "MAX"
-                  ? "rgba(0,0,50,0.9)"
-                  : "rgba(0,0,0,0.85)",
-              cursor: "pointer",
-            }}
-            onClick={handleCloseResult}
-          >
-            <div className={`result-text res-${resultData.type.toLowerCase()}`}>
-              {resultData.msg}
-            </div>
-            {resultData.type === "SUCCESS" && (
-              <div style={{ color: "#ffcc00", fontSize: "1.5rem" }}>
-                +{currentWeapon.polish_level} 단계!
+        {/* 오버레이 (CSS Transition 적용) */}
+        <div
+          className={`result-overlay ${gameState !== "IDLE" ? "active" : ""}`}
+          onClick={gameState === "POLISHING" ? handleSkip : handleCloseResult}
+          style={{
+            background:
+              resultData.type === "MAX" && gameState === "RESULT"
+                ? "rgba(0,0,50,0.9)"
+                : "rgba(0,0,0,0.85)",
+            cursor: "pointer",
+            pointerEvents: gameState !== "IDLE" ? "auto" : "none", // IDLE일 땐 클릭 안되게
+          }}
+        >
+          {gameState === "POLISHING" && (
+            <>
+              <div style={{ color: "#fff", fontSize: "1.5rem" }}>
+                🔨 연마중...
               </div>
-            )}
-          </div>
-        )}
+              <div
+                style={{ color: "#888", fontSize: "0.8rem", marginTop: "10px" }}
+              >
+                (클릭하여 스킵)
+              </div>
+            </>
+          )}
+
+          {gameState === "RESULT" && (
+            <>
+              <div
+                className={`result-text res-${resultData.type.toLowerCase()}`}
+              >
+                {resultData.msg}
+              </div>
+              {resultData.type === "SUCCESS" && (
+                <div style={{ color: "#ffcc00", fontSize: "1.5rem" }}>
+                  +{currentWeapon.polish_level} 단계!
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         <button
           className="polish-btn"
@@ -388,7 +462,6 @@ const PolishingGame = ({ userSession }) => {
           <span style={{ fontWeight: "bold", color: "#ccc" }}>
             📦 나의 보관함 ({inventory.length}/6)
           </span>
-          {/* ★ [수정됨] 무기가 있든 없든, 빈칸이 있으면 항상 버튼 표시 */}
           {inventory.length < 6 && (
             <button
               onClick={() => setIsPickerOpen(true)}
@@ -416,7 +489,6 @@ const PolishingGame = ({ userSession }) => {
                 className={`inv-slot ${
                   currentWeapon?.id === item?.id ? "active" : ""
                 }`}
-                // ★ [수정됨] 빈 슬롯을 클릭하면 '새 무기 추가' 모달이 열리도록 변경
                 onClick={() => {
                   if (item) equipFromInventory(item);
                   else setIsPickerOpen(true);
