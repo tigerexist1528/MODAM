@@ -42,7 +42,7 @@ const DUMMY_EVENTS = [
   },
 ];
 
-const Home = ({ setActivePage }) => {
+const Home = ({ setActivePage, setBoardCategory }) => {
   const [notices, setNotices] = useState([]);
 
   // 공지사항 5개만 가져오기

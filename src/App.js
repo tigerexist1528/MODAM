@@ -3172,7 +3172,10 @@ export default function App() {
       <nav className="gnb">
         <button
           className={activeMenu === "BOARD" ? "active" : ""}
-          onClick={() => setActiveMenu("BOARD")}
+          onClick={() => {
+            setActiveBoardTab(null); // ★ [추가] 탭을 '전체'로 초기화
+            setActiveMenu("BOARD"); // 그 다음 게시판 화면으로 이동
+          }}
         >
           게시판
         </button>
@@ -3206,7 +3209,14 @@ export default function App() {
       {/* [4] 메인 컨텐츠 영역 (ActiveMenu에 따라 변경) */}
       {/* ========================================= */}
       <main>
-        {activeMenu === "HOME" && <Home setActivePage={setActiveMenu} />}
+        {activeMenu === "HOME" && (
+          <Home
+            setActivePage={setActiveMenu} // 메인 메뉴 이동용 (기존 그대로)
+            // ★ [수정] 여기가 핵심입니다!
+            // Home에게 "게시판 탭 바꾸는 리모컨(setActiveBoardTab)"을 쥐어줍니다.
+            setBoardCategory={setActiveBoardTab}
+          />
+        )}
         {/* A. 게시판 화면 */}
         {activeMenu === "BOARD" && (
           <>
