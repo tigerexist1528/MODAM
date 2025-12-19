@@ -4480,16 +4480,83 @@ body {
   content: "14px" !important;
 }
 
-/* 폰트 이름 매핑 (CSS로 이름을 지정해줘야 함) */
+/* ========================================= */
+/* [1] 폰트 파일 등록 (@font-face) */
+/* ========================================= */
+
+/* 1번 폰트: 연단된 칼날 */
+@font-face {
+  font-family: "MODAM"; /* 내가 부를 별명 (내부용) */
+  src: url("./fonts/MODAM_font.ttf") format("truetype");
+  font-weight: normal;
+}
+
+/* ========================================= */
+/* 🔤 에디터 폰트 매핑 (이게 있어야 적용됨!) */
+/* ========================================= */
+
+/* 1. 드롭다운 메뉴에서 보여질 이름 설정 */
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Pretendard"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Pretendard"]::before {
+  content: "Pretendard";
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="MalgunGothic"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="MalgunGothic"]::before {
+  content: "맑은 고딕";
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Arial"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Arial"]::before {
+  content: "Arial";
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Gulim"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Gulim"]::before {
+  content: "굴림";
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Dotum"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Dotum"]::before {
+  content: "돋움";
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="Gungsuh"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="Gungsuh"]::before {
+  content: "궁서체";
+}
+
+.ql-snow .ql-picker.ql-font .ql-picker-label[data-value="MODAM"]::before,
+.ql-snow .ql-picker.ql-font .ql-picker-item[data-value="MODAM"]::before {
+  content: "던전앤파이터"; /* 화면에 뜨는 이름 */
+}
+
+/* 2. 실제 폰트 적용 (컴퓨터에 있는 폰트를 불러옴) */
 .ql-font-Pretendard {
-  font-family: "Pretendard";
+  font-family: "Pretendard", sans-serif;
 }
+
+/* ★ 맑은 고딕 연결 */
+.ql-font-MalgunGothic {
+  font-family: "Malgun Gothic", "맑은 고딕", sans-serif;
+}
+
+/* ★ Arial 연결 */
+.ql-font-Arial {
+  font-family: "Arial", sans-serif;
+}
+
+/* 기타 폰트 연결 */
 .ql-font-Gulim {
-  font-family: "Gulim";
+  font-family: "Gulim", "굴림", sans-serif;
 }
-.ql-font-Batang {
-  font-family: "Batang";
+.ql-font-Dotum {
+  font-family: "Dotum", "돋움", sans-serif;
 }
-.ql-font-NanumGothic {
-  font-family: "Nanum Gothic";
+.ql-font-Gungsuh {
+  font-family: "Gungsuh", "궁서", serif;
+}
+
+.ql-font-Nanum {
+  font-family: "MODAM", "던전앤파이터" sans-serif; /* @font-face 이름과 일치해야 함 */
 }
