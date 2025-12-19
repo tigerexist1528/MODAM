@@ -4185,7 +4185,7 @@ body {
 }
 
 /* ========================================= */
-/* 🛠️ 게시판 테이블 스타일 (완벽 정렬판) */
+/* 🛠️ 게시판 테이블 스타일 (Final) */
 /* ========================================= */
 
 .cafe-table {
@@ -4195,7 +4195,7 @@ body {
   table-layout: fixed; /* 칸 너비 고정 */
 }
 
-/* 1. 컬럼 너비 설정 (고정값) */
+/* 1. 컬럼 너비 설정 */
 .cafe-table th:nth-child(1),
 .cafe-table td:nth-child(1) {
   width: 60px;
@@ -4203,7 +4203,7 @@ body {
 .cafe-table th:nth-child(2),
 .cafe-table td:nth-child(2) {
   width: auto;
-} /* 제목 (나머지) */
+} /* 제목 */
 .cafe-table th:nth-child(3),
 .cafe-table td:nth-child(3) {
   width: 120px;
@@ -4227,7 +4227,7 @@ body {
   border-bottom: 1px solid #222;
   text-align: center;
   vertical-align: middle;
-  white-space: nowrap; /* 줄바꿈 금지 */
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -4242,36 +4242,62 @@ body {
   background-color: #1a1a1a;
 }
 
-/* 제목 칸은 왼쪽 정렬 */
+/* ★ [핵심] 제목 칸 정렬 (뱃지와 제목 사이 간격 확보) */
 .col-title {
   text-align: left !important;
   padding-left: 10px !important;
+  display: flex !important;
+  align-items: center; /* 수직 중앙 정렬 */
+  height: 100%;
+  gap: 10px; /* ★ 뱃지와 제목 사이를 10px 띄움 */
 }
 
-/* ★ 상단 고정 공지사항 전용 스타일 */
+/* 제목 텍스트 */
+.post-title-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  color: #fff;
+  cursor: pointer;
+}
+.post-title-text:hover {
+  color: #ffcc00;
+  text-decoration: underline;
+}
+
+/* 뱃지 스타일 */
+.best-badge {
+  background: #ffcc00;
+  color: #000;
+  font-size: 0.75rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  flex-shrink: 0; /* 절대 찌그러지지 않음 */
+  line-height: 1.2;
+}
+
+/* 상단 고정 공지 배경 */
 .notice-pinned-row {
-  background-color: rgba(255, 204, 0, 0.05); /* 아주 연한 금색 배경 */
+  background-color: rgba(255, 204, 0, 0.05);
   border-bottom: 1px solid #333;
 }
 .notice-pinned-row:hover {
   background-color: rgba(255, 204, 0, 0.1);
 }
 
-/* 인기글(Best 5) 박스 (이건 그대로 두셔도 됩니다) */
-.best-posts-area {
-  margin-bottom: 30px;
-  padding: 0 15px 15px 15px; /* 내부 테이블 여백 조정 */
-  background: linear-gradient(135deg, #1e1e1e 0%, #111 100%);
+/* 글쓰기 카테고리 선택 셀렉트박스 */
+.category-select {
+  padding: 10px;
+  background: #222;
+  color: #fff;
   border: 1px solid #444;
-  border-radius: 8px;
-}
-.best-label {
-  color: #ffcc00;
+  border-radius: 4px;
+  margin-right: 10px;
   font-weight: bold;
-  padding: 15px 5px;
-  display: block;
-  border-bottom: 1px solid #333; /* 구분선 추가 */
-  margin-bottom: 10px;
+  cursor: pointer;
 }
 
 /* 글쓰기 폼 */

@@ -14,7 +14,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [votes, setVotes] = useState({ likes: 0, dislikes: 0, myVote: null });
   const [session, setSession] = useState(null);
   const [sortOrder, setSortOrder] = useState("LATEST");
-  const [form, setForm] = useState({ title: "", content: "", isNotice: false });
+
+  // ★ categoryState 추가: 글 쓸 때 선택한 카테고리를 저장
+  const [form, setForm] = useState({
+    title: "",
+    content: "",
+    isNotice: false,
+    category: "FREE",
+  });
+
   const [editingId, setEditingId] = useState(null);
   const [commentInput, setCommentInput] = useState("");
   const quillRef = useRef(null);
@@ -87,6 +95,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         .select("*")
         .order("like_count", { ascending: false })
         .limit(5);
+      // 베스트 게시글도 현재 카테고리에 맞춰서 필터링 (전체면 전체에서, 공략이면 공략에서)
       if (category) query = query.eq("category", category);
       const { data } = await query;
       setBestPosts(data || []);
@@ -141,7 +150,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       title: form.title,
       content: form.content,
       is_notice: form.isNotice,
-      category: category || "FREE",
+      category: form.category, // ★ 사용자가 선택한 카테고리로 저장
     };
 
     try {
@@ -185,7 +194,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const handleGoList = () => {
-    setForm({ title: "", content: "", isNotice: false });
+    setForm({ title: "", content: "", isNotice: false, category: "FREE" });
     setEditingId(null);
     setCurrentPost(null);
     fetchPosts(sortOrder);
@@ -276,14 +285,20 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     };
   };
 
+  // ★ 폰트 및 크기 설정 추가
   const modules = useMemo(
     () => ({
       toolbar: {
         container: [
           [{ header: [1, 2, 3, false] }],
+          [{ font: [] }], // 폰트 선택 기능
+          [{ size: ["small", false, "large", "huge"] }], // 글자 크기
           ["bold", "italic", "underline", "strike"],
           [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          [{ align: [] }],
           ["link", "image"],
+          ["clean"],
         ],
         handlers: { image: imageHandler },
       },
@@ -291,11 +306,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     []
   );
 
-  // ★ [핵심] 렌더링용 변수 분리
-  // 1. 공지사항만 필터링 (상단 고정용)
+  // 상단 공지 필터링
   const noticePosts = posts.filter((p) => p.is_notice);
-
-  // 2. 전체 목록은 'posts' 그대로 사용 (공지사항도 시간순으로 여기에 포함됨)
 
   return (
     <div className="board-container">
@@ -332,7 +344,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                       <td style={{ color: "#ffcc00", fontWeight: "bold" }}>
                         {idx + 1}
                       </td>
-                      <td className="col-title" style={{ textAlign: "left" }}>
+                      {/* ★ CSS 수정으로 인해 이제 제목이 배지와 딱 붙지 않음 */}
+                      <td className="col-title">
                         <span className="best-badge">BEST</span>
                         <span className="post-title-text">{post.title}</span>
                       </td>
@@ -370,7 +383,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               className="btn-gold"
               onClick={() => {
                 if (!session) return alert("로그인이 필요합니다.");
-                setForm({ title: "", content: "", isNotice: false });
+                // 글쓰기 누를 때 현재 카테고리를 기본값으로 설정 (전체면 FREE)
+                setForm({
+                  title: "",
+                  content: "",
+                  isNotice: false,
+                  category: category || "FREE",
+                });
                 setView("WRITE");
               }}
             >
@@ -390,19 +409,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               </tr>
             </thead>
             <tbody>
-              {/* 1. 상단 고정 공지 (복사본) */}
-              {/* ★ 일반 글과 완전히 동일한 HTML 구조 유지 (정렬 깨짐 방지) */}
+              {/* 1. 상단 공지 (복사본) */}
               {noticePosts.map((post) => (
                 <tr
                   key={`notice-${post.id}`}
                   className="notice-pinned-row"
                   onClick={() => fetchPostDetail(post)}
                 >
-                  {/* 번호 칸에만 '공지'라고 써줌 */}
                   <td style={{ color: "#ff5a6a", fontWeight: "bold" }}>공지</td>
-
-                  {/* 제목 칸: 배지 없이 제목만 깔끔하게 (일반글과 줄맞춤) */}
-                  <td className="col-title" style={{ textAlign: "left" }}>
+                  <td className="col-title">
                     <span
                       className="post-title-text"
                       style={{ fontWeight: "bold", color: "#ffcc00" }}
@@ -413,8 +428,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                       <span style={{ marginLeft: "5px" }}>📷</span>
                     )}
                   </td>
-
-                  {/* 나머지는 똑같이 */}
                   <td>{post.nickname}</td>
                   <td>{formatDate(post.created_at)}</td>
                   <td>{post.view_count}</td>
@@ -422,11 +435,12 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                 </tr>
               ))}
 
-              {/* 2. 일반 전체 목록 (공지사항도 여기에 시간순으로 또 나옴) */}
-              {posts.map((post) => (
+              {/* 2. 일반 목록 (번호 계산: 전체개수 - 인덱스) */}
+              {posts.map((post, idx) => (
                 <tr key={post.id} onClick={() => fetchPostDetail(post)}>
-                  <td>{post.id.toString().slice(-4)}</td>
-                  <td className="col-title" style={{ textAlign: "left" }}>
+                  {/* ★ [핵심] DB ID 대신 순차 번호 표시 */}
+                  <td>{posts.length - idx}</td>
+                  <td className="col-title">
                     <span className="post-title-text">{post.title}</span>
                     {post.content.includes("<img") && (
                       <span style={{ marginLeft: "5px" }}>📷</span>
@@ -451,7 +465,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         </>
       )}
 
-      {/* WRITE, DETAIL 화면은 기존과 동일하므로 생략 없이 유지 */}
       {view === "WRITE" && (
         <div className="write-container">
           <h2
@@ -463,28 +476,34 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           >
             {editingId ? "글 수정" : "새 글 작성"}
           </h2>
-          <div style={{ marginBottom: "15px" }}>
-            <span
-              style={{
-                color: "#ffcc00",
-                marginRight: "15px",
-                fontWeight: "bold",
-              }}
+          <div
+            style={{
+              marginBottom: "15px",
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            {/* ★ [핵심] 게시판 선택 드롭다운 */}
+            <select
+              className="category-select"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
             >
-              [
-              {category === "NOTICE"
-                ? "공지사항"
-                : category === "GUIDE"
-                ? "공략"
-                : "자유"}
-              ]
-            </span>
+              <option value="FREE">💬 자유 게시판</option>
+              <option value="GUIDE">📘 공략 게시판</option>
+              {/* 관리자일 때만 공지사항 선택 가능 */}
+              {session && session.user.id === ADMIN_ID && (
+                <option value="NOTICE">📢 공지사항</option>
+              )}
+            </select>
+
             {session && session.user.id === ADMIN_ID && (
               <label
                 style={{
                   cursor: "pointer",
                   color: "#ff5a6a",
                   fontWeight: "bold",
+                  marginLeft: "10px",
                 }}
               >
                 <input
@@ -494,7 +513,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                     setForm({ ...form, isNotice: e.target.checked })
                   }
                 />{" "}
-                상단 공지 등록
+                상단 공지 고정
               </label>
             )}
           </div>
