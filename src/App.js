@@ -6,6 +6,8 @@ import "./styles.css";
 // [1] Import Session
 // =============================================================================
 // data.js에서 필요한 데이터들을 가져옵니다.
+import { updateURL } from "./utils/urlHelper";
+
 import {
   // 1. 핵심 아이템 DB
   loadGameData,
@@ -3224,35 +3226,56 @@ export default function App() {
             {/* 게시판용 LNB (2-Depth) */}
             <div className="lnb-container">
               <div className="lnb-inner">
+                {/* [1] 전체 게시판 버튼 */}
                 <button
                   className={`lnb-tab ${
                     activeBoardTab === null ? "active" : ""
                   }`}
-                  onClick={() => setActiveBoardTab(null)}
+                  onClick={() => {
+                    setActiveBoardTab(null);
+                    // ★ 핵심: 카테고리 바꿀 때 id는 지워버림(null)!
+                    updateURL({ category: null, id: null });
+                  }}
                 >
                   전체
                 </button>
+
+                {/* [2] 공지사항 버튼 */}
                 <button
                   className={`lnb-tab ${
                     activeBoardTab === "NOTICE" ? "active" : ""
                   }`}
-                  onClick={() => setActiveBoardTab("NOTICE")}
+                  onClick={() => {
+                    setActiveBoardTab("NOTICE");
+                    // ★ 핵심: 카테고리는 NOTICE로, id는 삭제!
+                    updateURL({ category: "NOTICE", id: null });
+                  }}
                 >
                   공지사항
                 </button>
+
+                {/* [3] 공략 게시판 버튼 */}
                 <button
                   className={`lnb-tab ${
                     activeBoardTab === "GUIDE" ? "active" : ""
                   }`}
-                  onClick={() => setActiveBoardTab("GUIDE")}
+                  onClick={() => {
+                    setActiveBoardTab("GUIDE");
+                    updateURL({ category: "GUIDE", id: null }); // ★ id 삭제
+                  }}
                 >
-                  공략게시판
+                  공략 게시판
                 </button>
+
+                {/* [4] 자유 게시판 버튼 */}
                 <button
                   className={`lnb-tab ${
                     activeBoardTab === "FREE" ? "active" : ""
                   }`}
-                  onClick={() => setActiveBoardTab("FREE")}
+                  onClick={() => {
+                    setActiveBoardTab("FREE");
+                    updateURL({ category: "FREE", id: null }); // ★ id 삭제
+                  }}
                 >
                   자유게시판
                 </button>
