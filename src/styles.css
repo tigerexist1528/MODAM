@@ -4125,3 +4125,234 @@ body {
     margin-top: 15px;
   }
 }
+
+/* ========================================= */
+/* 📝 게시판 (Board) - 네이버 카페 스타일 */
+/* ========================================= */
+
+.board-container {
+  max-width: 1200px; /* 더 넓게 */
+  margin: 0 auto;
+  padding: 40px 20px;
+  color: #eee;
+  min-height: 80vh;
+}
+
+/* 상단 헤더 영역 */
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #333;
+  padding-bottom: 15px;
+}
+.board-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #fff;
+}
+.board-title span {
+  color: #ffcc00;
+  margin-right: 10px;
+}
+
+/* 정렬 필터 & 검색 */
+.board-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  background: #1a1a1a;
+  padding: 10px 15px;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+.sort-btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  margin-right: 15px;
+  font-size: 0.9rem;
+}
+.sort-btn.active {
+  color: #fff;
+  font-weight: bold;
+}
+.sort-btn:hover {
+  color: #ccc;
+}
+
+/* 게시글 목록 (테이블) */
+.cafe-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.cafe-table th {
+  padding: 12px 5px;
+  border-bottom: 1px solid #444;
+  color: #aaa;
+  font-weight: normal;
+  text-align: center;
+}
+.cafe-table td {
+  padding: 12px 5px;
+  border-bottom: 1px solid #222;
+  color: #ccc;
+  text-align: center;
+}
+.cafe-table tr:hover {
+  background-color: #1a1a1a;
+}
+
+/* 제목 컬럼 스타일 */
+.col-title {
+  text-align: left !important;
+  padding-left: 15px !important;
+  cursor: pointer;
+}
+.post-title-text {
+  color: #fff;
+  transition: color 0.2s;
+}
+.post-title-text:hover {
+  color: #ffcc00;
+  text-decoration: underline;
+}
+
+/* 공지사항 강조 */
+.notice-row {
+  background-color: rgba(255, 204, 0, 0.05);
+}
+.notice-badge {
+  background: #ff5a6a;
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+  font-weight: bold;
+}
+.best-badge {
+  background: #ffcc00;
+  color: #000;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-right: 6px;
+  font-weight: bold;
+}
+
+/* 인기글(Best 5) 섹션 */
+.best-posts-area {
+  margin-bottom: 30px;
+  padding: 15px;
+  background: linear-gradient(135deg, #222 0%, #111 100%);
+  border: 1px solid #444;
+  border-radius: 8px;
+}
+.best-label {
+  color: #ffcc00;
+  font-weight: bold;
+  margin-bottom: 10px;
+  display: block;
+}
+
+/* 글쓰기 폼 */
+.write-container {
+  background: #1a1a1a;
+  padding: 30px;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+.write-input {
+  width: 100%;
+  box-sizing: border-box; /* ★ [핵심] 튀어나감 방지 */
+  padding: 12px;
+  margin-bottom: 15px;
+  background: #222;
+  border: 1px solid #444;
+  color: #fff;
+  font-size: 1.1rem;
+  border-radius: 4px;
+}
+.write-input:focus {
+  border-color: #ffcc00;
+  outline: none;
+}
+
+/* 상세 보기 */
+.detail-header {
+  border-bottom: 1px solid #444;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+.detail-title {
+  font-size: 1.6rem;
+  color: #fff;
+  margin-bottom: 10px;
+}
+.detail-meta {
+  display: flex;
+  gap: 15px;
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.detail-content {
+  min-height: 300px;
+  line-height: 1.8;
+  color: #eee;
+  margin-bottom: 50px;
+}
+.detail-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 댓글창 */
+.comment-box {
+  background: #151515;
+  border: 1px solid #333;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 30px;
+}
+.comment-input-area {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+.comment-input {
+  flex: 1;
+  background: #222;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+/* 버튼 공통 */
+.btn-gold {
+  background: #ffcc00;
+  color: #000;
+  font-weight: bold;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-dark {
+  background: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.btn-dark:hover {
+  background: #444;
+  color: #fff;
+}
