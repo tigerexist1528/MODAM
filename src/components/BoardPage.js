@@ -22,22 +22,37 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [commentInput, setCommentInput] = useState("");
   const quillRef = useRef(null);
 
-  // ★ [추가] 닉네임을 확실하게 가져오기 위한 상태
+  // ★ [핵심 1] 내 닉네임을 저장할 공간 (초기값: 모험가)
   const [myNickname, setMyNickname] = useState("모험가");
 
   useEffect(() => {
-    // 1. 세션 확인
+    // 1. 세션 확인 및 닉네임 로딩
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      if (session) {
+        // ★ 세션이 있으면 DB에서 내 프로필(닉네임)을 직접 가져옴!
+        fetchMyProfile(session.user.id);
+      }
     });
   }, []);
 
-  // ★ [추가] userStats가 로딩되면 닉네임 업데이트
-  useEffect(() => {
-    if (userStats?.character?.nickname) {
-      setMyNickname(userStats.character.nickname);
+  // ★ [핵심 2] DB에서 'profiles' 테이블 조회 함수
+  const fetchMyProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("nickname")
+        .eq("id", userId)
+        .single();
+
+      if (data && data.nickname) {
+        console.log("DB에서 가져온 닉네임:", data.nickname);
+        setMyNickname(data.nickname); // 상태 업데이트 (MODAM)
+      }
+    } catch (e) {
+      console.error("프로필 로딩 에러:", e);
     }
-  }, [userStats]);
+  };
 
   useEffect(() => {
     // 뒤로가기 히스토리 초기화
@@ -139,10 +154,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
-    let writerNickname = "모험가";
-    if (userStats && userStats.character && userStats.character.nickname) {
-      writerNickname = userStats.character.nickname;
-    }
+    // ★ [핵심 3] 글 쓸 때 가져온 'myNickname'을 사용
+    const writerNickname = myNickname || "모험가";
 
     const payload = {
       title: form.title,
@@ -153,13 +166,19 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
 
     try {
       if (editingId) {
-        // ... update 로직 ...
+        const { error } = await supabase
+          .from("posts")
+          .update(payload)
+          .eq("id", editingId)
+          .eq("user_id", session.user.id);
+        if (error) throw error;
+        alert("수정되었습니다.");
       } else {
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
             user_id: session.user.id,
-            nickname: writerNickname, // ★ 여기서 안전한 변수 사용
+            nickname: writerNickname, // MODAM이 들어갑니다!
             view_count: 0,
             like_count: 0,
           },
@@ -234,7 +253,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         post_id: currentPost.id,
         content: commentInput,
         user_id: session.user.id,
-        nickname: myNickname || "모험가", // 댓글도 동일하게 적용
+        nickname: myNickname || "모험가", // 댓글도 내 닉네임으로!
       },
     ]);
     if (!error) {
@@ -289,18 +308,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     []
   );
 
-  // ★ [핵심] 테이블 컬럼 너비 강제 설정 (깨짐 방지)
-  // title을 제외한 나머지는 고정 너비(px), title은 auto
-  const TableColGroup = () => (
-    <colgroup>
-      <col style={{ width: "80px" }} /> {/* 번호/공지 */}
-      <col style={{ width: "auto" }} /> {/* 제목 (나머지 공간) */}
-      <col style={{ width: "120px" }} /> {/* 작성자 */}
-      <col style={{ width: "100px" }} /> {/* 날짜 */}
-      <col style={{ width: "70px" }} /> {/* 조회 */}
-      <col style={{ width: "70px" }} /> {/* 추천 */}
-    </colgroup>
-  );
+  // ★ [핵심 4] 레이아웃 깨짐의 주범이었던 TableColGroup 삭제됨!
+  // 이제 styles.css가 테이블 너비를 전적으로 제어합니다.
 
   return (
     <div className="board-container">
@@ -331,13 +340,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             <div className="best-posts-area">
               <span className="best-label">🏆 주간 베스트 인기글</span>
               <table className="cafe-table">
-                {/* ★ 여기도 colgroup 적용 */}
-                <colgroup>
-                  <col style={{ width: "50px" }} />
-                  <col style={{ width: "auto" }} />
-                  <col style={{ width: "120px" }} />
-                  <col style={{ width: "80px" }} />
-                </colgroup>
+                {/* colgroup 제거됨 */}
                 <tbody>
                   {bestPosts.map((post, idx) => (
                     <tr key={post.id} onClick={() => fetchPostDetail(post)}>
@@ -391,8 +394,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           </div>
 
           <table className="cafe-table">
-            {/* ★ [핵심] 컬럼 너비 강제 고정 */}
-            <TableColGroup />
+            {/* ★ [핵심 5] colgroup 태그 삭제됨 (충돌 해결) */}
             <thead>
               <tr>
                 <th>번호</th>
