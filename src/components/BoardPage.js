@@ -141,7 +141,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           {
             ...payload,
             user_id: session.user.id,
-            nickname: userStats.character.nickname || "모험가",
+            nickname: userStats?.character?.nickname || "모험가",
             view_count: 0,
             like_count: 0,
           },
@@ -184,15 +184,13 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase
-        .from("post_votes")
-        .insert([
-          {
-            post_id: currentPost.id,
-            user_id: session.user.id,
-            vote_type: type,
-          },
-        ]);
+      await supabase.from("post_votes").insert([
+        {
+          post_id: currentPost.id,
+          user_id: session.user.id,
+          vote_type: type,
+        },
+      ]);
     }
     const { count } = await supabase
       .from("post_votes")
@@ -218,7 +216,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         post_id: currentPost.id,
         content: commentInput,
         user_id: session.user.id,
-        nickname: userStats.character.nickname || "모험가",
+        nickname: userStats?.character?.nickname || "모험가",
       },
     ]);
     if (!error) {
