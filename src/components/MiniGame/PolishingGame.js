@@ -18,22 +18,20 @@ const PROBABILITIES = {
 };
 
 const PolishingGame = ({ userSession }) => {
-  // --- 상태 ---
   const [currentWeapon, setCurrentWeapon] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  // 애니메이션 상태
-  const [gameState, setGameState] = useState("IDLE"); // IDLE, POLISHING, RESULT
+  const [gameState, setGameState] = useState("IDLE");
   const [resultData, setResultData] = useState({ type: "", msg: "" });
+
+  // ★ [NEW] 데이터 처리 중 중복 클릭 방지용 잠금 장치
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const timerRef = useRef(null);
 
-  // --- 초기 로딩 ---
   useEffect(() => {
     if (userSession) fetchInventory();
-
-    // 컴포넌트가 사라질 때 타이머 정리 (메모리 누수 방지)
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
@@ -76,7 +74,8 @@ const PolishingGame = ({ userSession }) => {
   };
 
   const equipFromInventory = (dbItem) => {
-    if (gameState !== "IDLE") return;
+    // 게임 중이거나 처리 중일 땐 교체 금지
+    if (gameState !== "IDLE" || isProcessing) return;
     setCurrentWeapon(dbItem);
   };
 
@@ -94,27 +93,31 @@ const PolishingGame = ({ userSession }) => {
     }
   };
 
-  // --- ★ 연마 시작 (타이머 저장) ---
+  // --- 연마 시작 ---
   const handlePolish = () => {
-    if (!currentWeapon) return;
+    // ★ [핵심] 이미 처리 중이거나 게임 중이면 절대 실행 안 함
+    if (!currentWeapon || gameState !== "IDLE" || isProcessing) return;
     if (currentWeapon.polish_level >= 10) return alert("이미 최고 단계입니다!");
 
     setGameState("POLISHING");
+    setIsProcessing(true); // 잠금 시작
 
-    // 1.5초 뒤에 결과 실행 (이 타이머 ID를 저장해둠)
     timerRef.current = setTimeout(() => {
       calculateResult();
     }, 1500);
   };
 
-  // --- ★ 스킵 기능 (클릭 시 실행) ---
-  const handleSkip = () => {
+  // --- 스킵 기능 ---
+  const handleSkip = (e) => {
+    // ★ [핵심] 이벤트 전파 중단 (이 클릭이 버튼까지 뚫고 내려가지 않게 함)
+    if (e) e.stopPropagation();
+
     if (gameState === "POLISHING") {
       if (timerRef.current) {
-        clearTimeout(timerRef.current); // 기존 타이머 취소
+        clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-      calculateResult(); // 즉시 결과 계산 실행
+      calculateResult();
     }
   };
 
@@ -153,12 +156,9 @@ const PolishingGame = ({ userSession }) => {
     setResultData({ type, msg });
     setGameState("RESULT");
 
+    // DB 업데이트가 필요하다면 수행
     if (newLevel !== level || isBroken) {
-      await supabase
-        .from("minigame_inventory")
-        .update({ polish_level: newLevel })
-        .eq("id", currentWeapon.id);
-
+      // 낙관적 업데이트 (UI 먼저 갱신) -> 광클 시 반응 속도 향상
       setCurrentWeapon((prev) => ({ ...prev, polish_level: newLevel }));
       setInventory((prev) =>
         prev.map((item) =>
@@ -167,15 +167,32 @@ const PolishingGame = ({ userSession }) => {
             : item
         )
       );
+
+      // 백그라운드에서 DB 저장 (await를 쓰지 않아도 됨, UI는 이미 갱신됐으니까)
+      supabase
+        .from("minigame_inventory")
+        .update({ polish_level: newLevel })
+        .eq("id", currentWeapon.id)
+        .then(({ error }) => {
+          if (error) console.error("DB Update Failed:", error);
+        });
     }
 
-    // 결과창은 스킵 없이 보여주되, MAX 성공은 좀 더 오래 보여줌
+    // 결과창 닫기 타이머
     setTimeout(
       () => {
         setGameState("IDLE");
+        setIsProcessing(false); // ★ 모든 처리가 끝나야 잠금 해제
       },
       type === "MAX" ? 4000 : 1500
     );
+  };
+
+  // 결과창 강제 닫기 (클릭 시)
+  const handleCloseResult = (e) => {
+    if (e) e.stopPropagation(); // 투과 방지
+    setGameState("IDLE");
+    setIsProcessing(false); // 잠금 해제
   };
 
   return (
@@ -190,7 +207,10 @@ const PolishingGame = ({ userSession }) => {
         <div
           className="weapon-slot"
           onClick={() => {
-            if (!currentWeapon) setIsPickerOpen(true);
+            // 게임 중엔 무기 교체창 안 열림
+            if (!currentWeapon || gameState !== "IDLE") {
+              if (!currentWeapon) setIsPickerOpen(true);
+            }
           }}
         >
           {currentWeapon ? (
@@ -208,11 +228,11 @@ const PolishingGame = ({ userSession }) => {
           )}
         </div>
 
-        {/* ★ 연마 중 오버레이 (클릭 시 스킵 기능 추가) */}
+        {/* 연마 중 오버레이 (스킵) */}
         {gameState === "POLISHING" && (
           <div
             className="result-overlay"
-            onClick={handleSkip} // ★ 클릭하면 스킵!
+            onClick={handleSkip} // ★ 여기stopPropagation 적용됨
             style={{ cursor: "pointer" }}
           >
             <div style={{ color: "#fff", fontSize: "1.5rem" }}>
@@ -226,7 +246,7 @@ const PolishingGame = ({ userSession }) => {
           </div>
         )}
 
-        {/* 결과 오버레이 (클릭하면 결과창 닫기 추가 - 보너스 기능) */}
+        {/* 결과 오버레이 (닫기) */}
         {gameState === "RESULT" && (
           <div
             className="result-overlay"
@@ -237,7 +257,7 @@ const PolishingGame = ({ userSession }) => {
                   : "rgba(0,0,0,0.85)",
               cursor: "pointer",
             }}
-            onClick={() => setGameState("IDLE")} // 결과창도 클릭하면 바로 닫힘
+            onClick={handleCloseResult} // ★ 여기도 stopPropagation 적용됨
           >
             <div className={`result-text res-${resultData.type.toLowerCase()}`}>
               {resultData.msg}
@@ -253,9 +273,11 @@ const PolishingGame = ({ userSession }) => {
         <button
           className="polish-btn"
           onClick={handlePolish}
+          // ★ isProcessing이 true면 버튼이 비활성화됨 (광클 원천 봉쇄)
           disabled={
             !currentWeapon ||
             gameState !== "IDLE" ||
+            isProcessing ||
             currentWeapon.polish_level >= 10
           }
         >
