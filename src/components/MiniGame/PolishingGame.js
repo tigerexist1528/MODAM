@@ -26,6 +26,7 @@ const PolishingGame = ({ userSession }) => {
   const [resultData, setResultData] = useState({ type: "", msg: "" });
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const latestWeaponRef = useRef(null);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -34,6 +35,10 @@ const PolishingGame = ({ userSession }) => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [userSession]);
+
+  useEffect(() => {
+    latestWeaponRef.current = currentWeapon;
+  }, [currentWeapon]);
 
   const fetchInventory = async () => {
     const { data, error } = await supabase
@@ -45,6 +50,7 @@ const PolishingGame = ({ userSession }) => {
   };
 
   const handleSelectWeapon = async (item) => {
+    // 6개 꽉 차면 경고
     if (inventory.length >= 6) {
       alert("보관함이 가득 찼습니다! (최대 6개)");
       return;
@@ -58,7 +64,6 @@ const PolishingGame = ({ userSession }) => {
       weapon_id: item.id.toString(),
       image_url: imgUrl,
       polish_level: 0,
-      // ★ 초기 통계값 0으로 설정
       max_level: 0,
       total_try: 0,
       success_cnt: 0,
@@ -73,8 +78,10 @@ const PolishingGame = ({ userSession }) => {
       .select();
 
     if (!error && data) {
-      setInventory([...inventory, data[0]]);
-      setCurrentWeapon(data[0]);
+      const addedItem = data[0];
+      setInventory([...inventory, addedItem]);
+      setCurrentWeapon(addedItem);
+      latestWeaponRef.current = addedItem;
     }
   };
 
@@ -91,6 +98,7 @@ const PolishingGame = ({ userSession }) => {
     }
 
     setCurrentWeapon(dbItem);
+    latestWeaponRef.current = dbItem;
   };
 
   const deleteFromInventory = async (e, dbId) => {
@@ -103,13 +111,17 @@ const PolishingGame = ({ userSession }) => {
       .eq("id", dbId);
     if (!error) {
       setInventory((prev) => prev.filter((item) => item.id !== dbId));
-      if (currentWeapon?.id === dbId) setCurrentWeapon(null);
+      if (currentWeapon?.id === dbId) {
+        setCurrentWeapon(null);
+        latestWeaponRef.current = null;
+      }
     }
   };
 
   const handlePolish = () => {
-    if (!currentWeapon || gameState !== "IDLE" || isProcessing) return;
-    if (currentWeapon.polish_level >= 10) return alert("이미 최고 단계입니다!");
+    const current = latestWeaponRef.current;
+    if (!current || gameState !== "IDLE" || isProcessing) return;
+    if (current.polish_level >= 10) return alert("이미 최고 단계입니다!");
 
     setGameState("POLISHING");
     setIsProcessing(true);
@@ -132,7 +144,10 @@ const PolishingGame = ({ userSession }) => {
   };
 
   const calculateResult = async () => {
-    const level = currentWeapon.polish_level;
+    const current = latestWeaponRef.current;
+    if (!current) return;
+
+    const level = current.polish_level;
     const [succRate, mainRate, dropRate, breakRate] = PROBABILITIES[level];
 
     const rand = Math.random() * 100;
@@ -141,7 +156,6 @@ const PolishingGame = ({ userSession }) => {
     let newLevel = level;
     let isBroken = false;
 
-    // 통계 업데이트용 변수들
     let {
       max_level = 0,
       total_try = 0,
@@ -149,16 +163,15 @@ const PolishingGame = ({ userSession }) => {
       maintain_cnt = 0,
       drop_cnt = 0,
       break_cnt = 0,
-    } = currentWeapon;
+    } = current;
 
-    total_try += 1; // 시도 횟수는 무조건 증가
+    total_try += 1;
 
     if (rand < succRate) {
       type = "SUCCESS";
       msg = "연마 성공!";
       newLevel = level + 1;
       success_cnt += 1;
-      // 최고 기록 갱신 (현재 수치보다 높으면)
       if (newLevel > max_level) max_level = newLevel;
       if (newLevel === 10) {
         type = "MAX";
@@ -184,8 +197,8 @@ const PolishingGame = ({ userSession }) => {
     setResultData({ type, msg });
     setGameState("RESULT");
 
-    // ★ [핵심] 변경된 모든 데이터(레벨 + 통계)를 한 번에 업데이트
     const updatedStats = {
+      ...current,
       polish_level: newLevel,
       max_level,
       total_try,
@@ -195,22 +208,26 @@ const PolishingGame = ({ userSession }) => {
       break_cnt,
     };
 
-    // 낙관적 UI 업데이트 (숫자가 즉시 올라가게)
-    const nextWeaponState = { ...currentWeapon, ...updatedStats };
-    setCurrentWeapon(nextWeaponState);
+    latestWeaponRef.current = updatedStats;
+    setCurrentWeapon(updatedStats);
     setInventory((prev) =>
-      prev.map((item) =>
-        item.id === currentWeapon.id ? nextWeaponState : item
-      )
+      prev.map((item) => (item.id === current.id ? updatedStats : item))
     );
 
-    // DB 저장 (백그라운드)
     supabase
       .from("minigame_inventory")
-      .update(updatedStats)
-      .eq("id", currentWeapon.id)
+      .update({
+        polish_level: newLevel,
+        max_level,
+        total_try,
+        success_cnt,
+        maintain_cnt,
+        drop_cnt,
+        break_cnt,
+      })
+      .eq("id", current.id)
       .then(({ error }) => {
-        if (error) console.error("DB Update Failed:", error);
+        if (error) console.error("DB Save Error:", error);
       });
 
     setTimeout(
@@ -237,7 +254,6 @@ const PolishingGame = ({ userSession }) => {
 
       {/* 메인 스테이지 */}
       <div className="polishing-stage">
-        {/* 무기 슬롯 */}
         <div
           className="weapon-slot"
           onClick={() => {
@@ -261,7 +277,6 @@ const PolishingGame = ({ userSession }) => {
           )}
         </div>
 
-        {/* ★ [NEW] 우측 통계판 (무기가 선택되었을 때만 표시) */}
         {currentWeapon && (
           <div className="stats-board">
             <div className="stats-title">📊 강화 기록</div>
@@ -307,7 +322,6 @@ const PolishingGame = ({ userSession }) => {
           </div>
         )}
 
-        {/* 오버레이 (스킵/결과) */}
         {gameState === "POLISHING" && (
           <div
             className="result-overlay"
@@ -374,7 +388,8 @@ const PolishingGame = ({ userSession }) => {
           <span style={{ fontWeight: "bold", color: "#ccc" }}>
             📦 나의 보관함 ({inventory.length}/6)
           </span>
-          {!currentWeapon && (
+          {/* ★ [수정됨] 무기가 있든 없든, 빈칸이 있으면 항상 버튼 표시 */}
+          {inventory.length < 6 && (
             <button
               onClick={() => setIsPickerOpen(true)}
               style={{
@@ -401,7 +416,11 @@ const PolishingGame = ({ userSession }) => {
                 className={`inv-slot ${
                   currentWeapon?.id === item?.id ? "active" : ""
                 }`}
-                onClick={() => item && equipFromInventory(item)}
+                // ★ [수정됨] 빈 슬롯을 클릭하면 '새 무기 추가' 모달이 열리도록 변경
+                onClick={() => {
+                  if (item) equipFromInventory(item);
+                  else setIsPickerOpen(true);
+                }}
               >
                 {item ? (
                   <>
