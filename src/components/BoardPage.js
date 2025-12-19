@@ -44,10 +44,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [votes, setVotes] = useState({ likes: 0, dislikes: 0, myVote: null });
   const [session, setSession] = useState(null);
   const [sortOrder, setSortOrder] = useState("LATEST");
-  const [searchType, setSearchType] = useState("title"); // title, content, nickname
+
+  // ★ 검색 기능 상태
+  const [searchType, setSearchType] = useState("title");
   const [searchKeyword, setSearchKeyword] = useState("");
 
-  // 폼 상태
   const [form, setForm] = useState({
     title: "",
     content: "",
@@ -86,15 +87,12 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         .select("*")
         .eq("id", id)
         .single();
-
       if (error || !data) {
         alert("존재하지 않거나 삭제된 게시글입니다.");
-        updateURL({ id: null }); // 없는 글이면 URL 정리
+        updateURL({ id: null });
         setView("LIST");
         return;
       }
-
-      // 글이 있으면 상세 화면으로 이동
       await supabase.rpc("increment_view_count", { row_id: data.id });
       setCurrentPost(data);
       fetchComments(data.id);
@@ -117,50 +115,60 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  // ★ [수정] 카테고리 변경 시 초기화 로직 (검색어 초기화 포함)
   useEffect(() => {
-    const params = getQueryParams(); // URL 확인 (?id=50 등)
+    const params = getQueryParams();
+
+    // 1. 게시판 이동 시 검색어 초기화
+    setSearchKeyword("");
+    setSearchType("title");
 
     if (params.id) {
-      // ID가 있으면 그 글을 불러옴
       loadPostFromURL(params.id);
     } else {
-      // 없으면 목록 보여줌
       setView("LIST");
       setCurrentPost(null);
     }
-
     setSortOrder("LATEST");
-    fetchPosts("LATEST");
+    fetchPosts("LATEST"); // 초기화된 검색어로 목록 로딩
     fetchBestPosts();
   }, [category]);
 
-  const fetchPosts = async (order = sortOrder) => {
+  // ★ [수정] 검색 필터가 적용된 fetchPosts
+  const fetchPosts = async (order = sortOrder, keyword = "") => {
     try {
       let query = supabase.from("posts").select("*");
       if (category) query = query.eq("category", category);
 
-      // ★ [추가] 검색 필터 적용
-      if (searchKeyword.trim()) {
-        if (searchType === "title") {
-          query = query.ilike("title", `%${searchKeyword}%`);
-        } else if (searchType === "content") {
-          query = query.ilike("content", `%${searchKeyword}%`); // 내용은 html 태그 포함될 수 있음
-        } else if (searchType === "nickname") {
-          query = query.ilike("nickname", `%${searchKeyword}%`);
-        }
+      // 검색어가 있으면 필터링 (인자로 받은 keyword가 우선)
+      const finalKeyword = keyword || searchKeyword;
+      if (finalKeyword) {
+        if (searchType === "title")
+          query = query.ilike("title", `%${finalKeyword}%`);
+        else if (searchType === "content")
+          query = query.ilike("content", `%${finalKeyword}%`);
+        else if (searchType === "nickname")
+          query = query.ilike("nickname", `%${finalKeyword}%`);
       }
+
       if (order === "LATEST")
         query = query.order("created_at", { ascending: false });
       else if (order === "VIEW")
         query = query.order("view_count", { ascending: false });
       else if (order === "LIKE")
         query = query.order("like_count", { ascending: false });
+
       const { data, error } = await query;
       if (error) throw error;
       setPosts(data || []);
     } catch (error) {
       console.error(error);
     }
+  };
+
+  // 검색 버튼 핸들러
+  const handleSearch = () => {
+    fetchPosts(sortOrder, searchKeyword);
   };
 
   const fetchBestPosts = async () => {
@@ -179,8 +187,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const fetchPostDetail = async (post) => {
-    updateURL({ id: post.id }); // 유틸 함수 사용 (간편!)
-
+    updateURL({ id: post.id });
     await supabase.rpc("increment_view_count", { row_id: post.id });
     setCurrentPost(post);
     fetchComments(post.id);
@@ -214,7 +221,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
-  // ★ [핵심 수정] 글 등록/수정 로직 강화
+  // ★ [수정] 글 등록/수정 후 해당 게시판으로 자동 이동
   const handleWriteSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!form.title.trim()) return alert("제목을 입력해주세요.");
@@ -223,9 +230,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
-    // 카테고리 결정: 폼 선택값 > 현재 탭 > FREE
     const targetCategory = form.category || category || "FREE";
-
     const payload = {
       title: form.title,
       content: form.content,
@@ -235,28 +240,18 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
 
     try {
       if (editingId) {
-        // [수정]
-        // ★ .select()를 붙여야 업데이트된 데이터를 반환받을 수 있습니다.
         const { data, error } = await supabase
           .from("posts")
           .update(payload)
           .eq("id", editingId)
-          .eq("user_id", session.user.id) // 본인 글인지 이중 확인
+          .eq("user_id", session.user.id)
           .select();
 
         if (error) throw error;
-
-        // ★ [중요] 실제로 업데이트된 행이 있는지 확인 (0개면 실패)
-        if (!data || data.length === 0) {
-          alert(
-            "수정 실패: 본인의 글이 아니거나 이미 삭제된 글일 수 있습니다."
-          );
-          return;
-        }
-
+        if (!data || data.length === 0)
+          return alert("수정 실패: 권한이 없습니다.");
         alert("수정되었습니다.");
       } else {
-        // [등록]
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
@@ -269,8 +264,19 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         if (error) throw error;
         alert("등록되었습니다.");
       }
-      // 성공 시 목록으로 이동
-      handleGoList();
+
+      // ★ [핵심] 글 등록 후 해당 카테고리로 이동 및 새로고침
+      // 1. URL 업데이트 (카테고리 변경, ID 제거)
+      updateURL({ category: targetCategory, id: null });
+
+      // 2. App.js가 URL 변경을 감지하도록 강제 이벤트 발생 (Hooks 사용 시 필요)
+      window.dispatchEvent(new Event("popstate"));
+
+      // 3. 뷰 및 폼 초기화
+      setForm({ title: "", content: "", isNotice: false, category: "FREE" });
+      setEditingId(null);
+      setCurrentPost(null);
+      setView("LIST");
     } catch (error) {
       alert("작업 실패: " + error.message);
     }
@@ -292,8 +298,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const handleGoList = () => {
-    updateURL({ id: null }); // id 삭제
-
+    updateURL({ id: null });
     setForm({ title: "", content: "", isNotice: false, category: "FREE" });
     setEditingId(null);
     setCurrentPost(null);
@@ -405,21 +410,26 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   return (
     <div className="board-container">
       <div className="board-header">
-        <div className="board-title">
-          <span>
-            {category === "NOTICE"
-              ? "📢"
-              : category === "GUIDE"
-              ? "📘"
-              : category === "FREE"
-              ? "💬"
-              : "📝"}
-          </span>
-          {category === "NOTICE" && "공지사항"}
-          {category === "GUIDE" && "공략 게시판"}
-          {category === "FREE" && "자유 게시판"}
-          {!category && "전체 게시판"}
-        </div>
+        {/* ★ [수정] 글쓰기(WRITE) 모드에서는 헤더 로고 숨김 (메인으로 버튼만 남김) */}
+        {view !== "WRITE" ? (
+          <div className="board-title">
+            <span>
+              {category === "NOTICE"
+                ? "📢"
+                : category === "GUIDE"
+                ? "📘"
+                : category === "FREE"
+                ? "💬"
+                : "📝"}
+            </span>
+            {category === "NOTICE" && "공지사항"}
+            {category === "GUIDE" && "공략 게시판"}
+            {category === "FREE" && "자유 게시판"}
+            {!category && "전체 게시판"}
+          </div>
+        ) : (
+          <div className="board-title"></div> /* 공백 유지 */
+        )}
         <button className="btn-dark" onClick={() => setActivePage("HOME")}>
           🏠 메인으로
         </button>
@@ -549,6 +559,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               )}
             </tbody>
           </table>
+
+          {/* ★ [추가] 하단 검색창 (테이블 아래) */}
           <div className="search-bar-area" style={{ marginTop: "30px" }}>
             <select
               className="search-select"
@@ -564,12 +576,9 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               placeholder="검색어를 입력하세요"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && fetchPosts(sortOrder)}
+              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
             />
-            <button
-              className="search-btn"
-              onClick={() => fetchPosts(sortOrder)}
-            >
+            <button className="search-btn" onClick={handleSearch}>
               검색
             </button>
           </div>
@@ -597,7 +606,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             <select
               className="category-select"
               value={form.category}
-              // ★ [안전장치] 함수형 업데이트 사용
               onChange={(e) => {
                 const val = e.target.value;
                 setForm((prev) => ({ ...prev, category: val }));
@@ -653,7 +661,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               ref={quillRef}
               theme="snow"
               value={form.content}
-              // ★ [안전장치] 에디터 내용 변경 시 함수형 업데이트로 상태 최신화 보장
               onChange={(val) => setForm((prev) => ({ ...prev, content: val }))}
               modules={modules}
               style={{ height: "450px", color: "#000" }}
