@@ -23,11 +23,12 @@ Quill.register(Size, true);
 const Font = Quill.import("attributors/style/font");
 Font.whitelist = [
   "Pretendard",
-  "Gulim",
-  "Batang",
-  "NanumGothic",
+  "MalgunGothic",
   "Arial",
-  "Verdana",
+  "Gulim",
+  "Dotum",
+  "Gungsuh",
+  "MODAM",
 ];
 Quill.register(Font, true);
 // --------------------------------
