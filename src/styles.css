@@ -3773,6 +3773,18 @@ body {
   margin: 0 auto;
   padding: 20px;
   color: #fff;
+
+  /* ★ [핵심] 광클 시 텍스트 선택(파란색 드래그) 방지 */
+  user-select: none;
+  -webkit-user-select: none; /* 크롬/사파리 호환 */
+  -moz-user-select: none; /* 파이어폭스 호환 */
+  -ms-user-select: none; /* 구형 엣지 호환 */
+}
+
+/* 이미지 드래그 방지 (이미지가 딸려오는 현상 제거) */
+.minigame-container img {
+  -webkit-user-drag: none;
+  pointer-events: none; /* 이미지가 클릭 이벤트를 가로채지 않게 함 */
 }
 
 /* 게임 메인 스테이지 (강화소 배경) */
@@ -3780,8 +3792,8 @@ body {
   position: relative;
   width: 100%;
   height: 400px;
-  background-color: #1a1a1a; /* 배경 이미지 없을 시 기본색 */
-  background-image: url("https://via.placeholder.com/800x400/222/555?text=Smithy+Background"); /* 배경 이미지 교체 필요 */
+  background-color: #1a1a1a;
+  background-image: url("https://via.placeholder.com/800x400/222/555?text=Smithy+Background");
   background-size: cover;
   background-position: center;
   border: 2px solid #444;
@@ -3792,6 +3804,9 @@ body {
   align-items: center;
   overflow: hidden;
   margin-bottom: 20px;
+
+  /* 스테이지 내부에서의 터치 동작 최적화 */
+  touch-action: manipulation;
 }
 
 /* 무기 슬롯 */
@@ -3807,15 +3822,19 @@ body {
   align-items: center;
   cursor: pointer;
   transition: all 0.2s;
+  z-index: 10; /* 오버레이보다 아래, 배경보다 위 */
 }
 .weapon-slot:hover {
   border-color: #ffcc00;
   box-shadow: 0 0 15px rgba(255, 204, 0, 0.3);
 }
+
+/* 이미지 pointer-events 복구 (슬롯 안에 있는 이미지는 보여야 하니까) */
 .weapon-slot img {
   width: 80%;
   height: 80%;
   object-fit: contain;
+  pointer-events: none; /* 클릭은 부모(slot)가 받음 */
 }
 
 /* 강화 수치 표시 */
@@ -3829,7 +3848,7 @@ body {
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 0.9rem;
-  z-index: 10;
+  z-index: 11;
 }
 
 /* 연마 버튼 */
@@ -3844,6 +3863,10 @@ body {
   cursor: pointer;
   box-shadow: 0 5px 15px rgba(255, 153, 0, 0.4);
   transition: transform 0.1s;
+  z-index: 10;
+
+  /* 버튼 텍스트 선택 방지 확실하게 */
+  user-select: none;
 }
 .polish-btn:active {
   transform: scale(0.95);
@@ -3869,6 +3892,10 @@ body {
   align-items: center;
   z-index: 50;
   animation: fadeIn 0.2s forwards;
+
+  /* 오버레이도 드래그 방지 */
+  user-select: none;
+  cursor: pointer; /* 클릭 가능하다는 표시 */
 }
 
 .result-text {
@@ -3877,22 +3904,23 @@ body {
   text-shadow: 0 0 20px currentColor;
   margin-bottom: 20px;
   animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  pointer-events: none; /* 글자 클릭해도 뒤에 오버레이 클릭되게 */
 }
 
 /* 상태별 색상 */
 .res-success {
   color: #ffcc00;
-} /* 노랑 */
+}
 .res-maintain {
   color: #ff8800;
-} /* 주황 */
+}
 .res-drop {
   color: #ff3333;
-} /* 빨강 */
+}
 .res-break {
   color: #880000;
   text-decoration: line-through;
-} /* 검붉은색 */
+}
 .res-max {
   color: #00ffff;
   font-size: 4rem;
@@ -3931,6 +3959,7 @@ body {
 .inv-slot img {
   width: 70%;
   height: 70%;
+  pointer-events: none;
 }
 .inv-level {
   position: absolute;
@@ -3953,6 +3982,7 @@ body {
   line-height: 16px;
   cursor: pointer;
   display: none;
+  z-index: 5;
 }
 .inv-slot:hover .inv-close {
   display: block;
