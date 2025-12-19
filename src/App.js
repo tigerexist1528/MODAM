@@ -61,6 +61,7 @@ import LoginModal from "./components/LoginModal";
 import ProfileModal from "./components/ProfileModal";
 import MessageModal from "./components/MessageModal";
 import BoardPage from "./components/BoardPage";
+import FaqModal from "./components/FaqModal";
 import PresetBar from "./components/PresetBar";
 import SkillAnalysisPage from "./components/SkillAnalysisPage";
 import { ItemCard } from "./components/ItemCard";
@@ -190,7 +191,7 @@ export default function App() {
     onConfirm: null,
     data: null,
   });
-
+  const [isFaqOpen, setIsFaqOpen] = useState(false);
   // 2. openAlert 함수 정의
   const openAlert = (msg) => setSystemModal({ type: "ALERT", message: msg });
 
@@ -3377,6 +3378,35 @@ export default function App() {
         )}
       </main>
 
+      {/* ★ [핵심] 플로팅 버튼 (HOME 화면에서만 보임) */}
+      {activeMenu === "HOME" && (
+        <div className="floating-btn-container">
+          {/* 1. 구글폼 링크 (새 창 열기) */}
+          <a
+            href="https://forms.gle/LJJ1h9gF8fczFGm86"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="floating-btn btn-bug"
+          >
+            <span className="floating-icon">🐛</span>
+            버그제보
+          </a>
+
+          {/* 2. FAQ 모달 열기 */}
+          <div
+            className="floating-btn btn-faq"
+            onClick={() => setIsFaqOpen(true)}
+          >
+            <span className="floating-icon">❓</span>
+            FAQ
+          </div>
+        </div>
+      )}
+
+      {/* FAQ 모달 */}
+      {isFaqOpen && (
+        <FaqModal session={session} onClose={() => setIsFaqOpen(false)} />
+      )}
       {/* ========================================= */}
       {/* [5] 기타 팝업 모달들 (로그인, 로그아웃, 프로필) */}
       {/* ========================================= */}

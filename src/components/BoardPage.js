@@ -44,6 +44,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [votes, setVotes] = useState({ likes: 0, dislikes: 0, myVote: null });
   const [session, setSession] = useState(null);
   const [sortOrder, setSortOrder] = useState("LATEST");
+  const [searchType, setSearchType] = useState("title"); // title, content, nickname
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   // 폼 상태
   const [form, setForm] = useState({
@@ -136,6 +138,17 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     try {
       let query = supabase.from("posts").select("*");
       if (category) query = query.eq("category", category);
+
+      // ★ [추가] 검색 필터 적용
+      if (searchKeyword.trim()) {
+        if (searchType === "title") {
+          query = query.ilike("title", `%${searchKeyword}%`);
+        } else if (searchType === "content") {
+          query = query.ilike("content", `%${searchKeyword}%`); // 내용은 html 태그 포함될 수 있음
+        } else if (searchType === "nickname") {
+          query = query.ilike("nickname", `%${searchKeyword}%`);
+        }
+      }
       if (order === "LATEST")
         query = query.order("created_at", { ascending: false });
       else if (order === "VIEW")
@@ -536,6 +549,30 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
               )}
             </tbody>
           </table>
+          <div className="search-bar-area" style={{ marginTop: "30px" }}>
+            <select
+              className="search-select"
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value)}
+            >
+              <option value="title">제목</option>
+              <option value="content">내용</option>
+              <option value="nickname">작성자</option>
+            </select>
+            <input
+              className="search-input"
+              placeholder="검색어를 입력하세요"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && fetchPosts(sortOrder)}
+            />
+            <button
+              className="search-btn"
+              onClick={() => fetchPosts(sortOrder)}
+            >
+              검색
+            </button>
+          </div>
         </>
       )}
 
