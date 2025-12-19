@@ -76,6 +76,7 @@ import InnerModalManager from "./components/modals/InnerModalManager";
 import { useImagePreloader } from "./hooks/useImagePreloader";
 import { useTooltipControl } from "./hooks/useTooltipControl";
 import { usePresetManager } from "./hooks/usePresetManager";
+import { useUrlNavigation } from "./hooks/useUrlNavigation";
 // minigame
 import PolishingGame from "./components/MiniGame/PolishingGame";
 
@@ -179,7 +180,7 @@ export default function App() {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false); // 프로필 수정창
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState(false); // 최초 설정 여부
-  const [activeMenu, setActiveMenu] = useState("HOME");
+  const { activeMenu, navigateTo } = useUrlNavigation("HOME");
   const [activeBoardTab, setActiveBoardTab] = useState(null);
   const [systemModal, setSystemModal] = useState({
     type: null,
@@ -212,32 +213,6 @@ export default function App() {
     openAlert,
     setSystemModal
   );
-
-  // ★ [추가] 메뉴 이동 시 브라우저 기록 남기는 함수
-  const navigateTo = (menu) => {
-    if (activeMenu === menu) return; // 같은 메뉴면 무시
-    window.history.pushState({ menu: menu }, ""); // 기록 추가
-    setActiveMenu(menu);
-  };
-
-  // ★ [추가] 브라우저 뒤로가기 처리
-  useEffect(() => {
-    // 1. 페이지가 처음 로드될 때 현재 상태 저장
-    window.history.replaceState({ menu: "HOME" }, "");
-
-    // 2. 뒤로가기 버튼(popstate) 눌렀을 때 감지
-    const handlePopState = (event) => {
-      if (event.state && event.state.menu) {
-        setActiveMenu(event.state.menu); // 저장된 메뉴로 이동
-      } else {
-        // 상태가 없으면 기본 홈으로
-        setActiveMenu("HOME");
-      }
-    };
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
 
   // 4. useEffect (인증 로직 + 프로필 체크)
   useEffect(() => {

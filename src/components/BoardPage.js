@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from "react";
 import ReactQuill, { Quill } from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
+import { updateURL, getQueryParams } from "../utils/urlHelper";
 
 // --- [에디터 설정] ---
 const Size = Quill.import("attributors/style/size");
@@ -76,6 +77,32 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
+  const loadPostFromURL = async (id) => {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error || !data) {
+        alert("존재하지 않거나 삭제된 게시글입니다.");
+        updateURL({ id: null }); // 없는 글이면 URL 정리
+        setView("LIST");
+        return;
+      }
+
+      // 글이 있으면 상세 화면으로 이동
+      await supabase.rpc("increment_view_count", { row_id: data.id });
+      setCurrentPost(data);
+      fetchComments(data.id);
+      fetchVotes(data.id);
+      setView("DETAIL");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     window.history.replaceState({ menu: "BOARD", view: "LIST" }, "");
     const handlePopState = (event) => {
@@ -89,8 +116,17 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   }, []);
 
   useEffect(() => {
-    setView("LIST");
-    setCurrentPost(null);
+    const params = getQueryParams(); // URL 확인 (?id=50 등)
+
+    if (params.id) {
+      // ID가 있으면 그 글을 불러옴
+      loadPostFromURL(params.id);
+    } else {
+      // 없으면 목록 보여줌
+      setView("LIST");
+      setCurrentPost(null);
+    }
+
     setSortOrder("LATEST");
     fetchPosts("LATEST");
     fetchBestPosts();
@@ -130,7 +166,8 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const fetchPostDetail = async (post) => {
-    window.history.pushState({ menu: "BOARD", view: "DETAIL" }, "");
+    updateURL({ id: post.id }); // 유틸 함수 사용 (간편!)
+
     await supabase.rpc("increment_view_count", { row_id: post.id });
     setCurrentPost(post);
     fetchComments(post.id);
@@ -242,11 +279,12 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const handleGoList = () => {
+    updateURL({ id: null }); // id 삭제
+
     setForm({ title: "", content: "", isNotice: false, category: "FREE" });
     setEditingId(null);
     setCurrentPost(null);
     fetchPosts(sortOrder);
-    fetchBestPosts();
     setView("LIST");
   };
 
