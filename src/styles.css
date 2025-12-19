@@ -4185,78 +4185,56 @@ body {
 }
 
 /* ========================================= */
-/* 🛠️ 게시판 테이블 스타일 (최종 수정) */
+/* 🛠️ 게시판 테이블 최종 스타일 (colgroup 대응) */
 /* ========================================= */
 
 .cafe-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.95rem;
-  /* ★ [핵심 1] fixed로 해야 칸 너비가 지정한대로 딱 고정됩니다. */
-  table-layout: fixed;
+  table-layout: fixed; /* colgroup의 너비를 엄격하게 따름 */
 }
 
-.cafe-table th,
-.cafe-table td {
+/* ★ [핵심] 줄바꿈 절대 금지 (공지, 날짜, 작성자 등이 세로로 안 깨짐) */
+.cafe-table th, .cafe-table td {
   padding: 12px 8px;
   border-bottom: 1px solid #222;
   text-align: center;
   vertical-align: middle;
-
-  /* 내용이 길어도 줄바꿈 없이 ... 처리 */
-  white-space: nowrap;
+  white-space: nowrap; /* 줄바꿈 방지 */
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.cafe-table th {
-  border-bottom: 1px solid #444;
-  color: #aaa;
-}
-.cafe-table td {
-  color: #ccc;
-}
-.cafe-table tr:hover {
-  background-color: #1a1a1a;
-}
+.cafe-table th { border-bottom: 1px solid #444; color: #aaa; }
+.cafe-table td { color: #ccc; }
+.cafe-table tr:hover { background-color: #1a1a1a; }
 
-/* ★ [핵심 2] 제목 칸 디자인 (여기가 제일 중요!) */
+/* 제목 컬럼 */
 .col-title {
-  /* 제목 칸만 왼쪽 정렬 */
   text-align: left !important;
   padding-left: 15px !important;
   cursor: pointer;
-
-  /* Flexbox를 써서 [배지]와 [제목]을 가로로 완벽하게 정렬 */
+  
   display: flex !important;
-  align-items: center;
-  gap: 8px; /* 배지와 제목 사이 간격 */
-
-  /* 제목 칸이 찌그러지지 않도록 높이 확보 */
-  height: 100%;
-  min-height: 45px; /* 행 높이 최소값 보장 */
+  align-items: center; 
+  gap: 8px;
+  height: 100%; 
+  min-height: 45px;
 }
 
-/* 제목 텍스트 (말줄임표 처리) */
 .post-title-text {
   color: #fff;
   transition: color 0.2s;
-
-  /* 제목이 길면 ...으로 자르기 */
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  flex: 1; /* 남은 공간 다 차지하기 */
+  flex: 1;
 }
-.post-title-text:hover {
-  color: #ffcc00;
-  text-decoration: underline;
-}
+.post-title-text:hover { color: #ffcc00; text-decoration: underline; }
 
-/* 배지 (BEST, 필독) 깨짐 방지 */
-.notice-badge,
-.best-badge {
-  flex-shrink: 0; /* ★ 공간이 좁아도 배지 크기는 절대 줄어들지 않음 */
+.notice-badge, .best-badge {
+  flex-shrink: 0;
   display: inline-block;
   padding: 3px 8px;
   border-radius: 4px;
@@ -4264,15 +4242,10 @@ body {
   font-size: 0.75rem;
   line-height: 1;
 }
-
-.notice-badge {
-  background: #ff5a6a;
-  color: #fff;
-}
-.best-badge {
-  background: #ffcc00;
-  color: #000;
-}
+.notice-badge { background: #ff5a6a; color: #fff; }
+.best-badge { background: #ffcc00; color: #000; }
+.notice-row { background-color: rgba(255, 90, 106, 0.08); }
+.notice-row td { color: #ffdbe0; font-weight: bold; }
 
 /* 인기글(Best 5) 박스 (이건 그대로 두셔도 됩니다) */
 .best-posts-area {

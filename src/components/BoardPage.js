@@ -3,6 +3,7 @@ import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";
 import { supabase } from "../utils/supabaseClient";
 
+// 관리자 ID (본인 UUID 확인 필요)
 const ADMIN_ID = "2f9ff0d3-4b34-42dd-9be6-ba4fea6aa3ff";
 
 const BoardPage = ({ setActivePage, userStats, category }) => {
@@ -21,16 +22,40 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   const [commentInput, setCommentInput] = useState("");
   const quillRef = useRef(null);
 
+  // ★ [추가] 닉네임을 확실하게 가져오기 위한 상태
+  const [myNickname, setMyNickname] = useState("모험가");
+
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data: { session } }) => setSession(session));
+    // 1. 세션 확인
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
   }, []);
 
-  // ★ [핵심] 카테고리가 바뀌면 무조건 목록 화면으로 초기화 (더미 현상 해결)
+  // ★ [추가] userStats가 로딩되면 닉네임 업데이트
+  useEffect(() => {
+    if (userStats?.character?.nickname) {
+      setMyNickname(userStats.character.nickname);
+    }
+  }, [userStats]);
+
+  useEffect(() => {
+    // 뒤로가기 히스토리 초기화
+    window.history.replaceState({ menu: "BOARD", view: "LIST" }, "");
+
+    const handlePopState = (event) => {
+      if (event.state && event.state.view) {
+        setView(event.state.view);
+        if (event.state.view === "LIST") setCurrentPost(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   useEffect(() => {
     setView("LIST");
-    setCurrentPost(null); // 보고 있던 글 비우기
+    setCurrentPost(null);
     setSortOrder("LATEST");
     fetchPosts("LATEST");
     fetchBestPosts();
@@ -71,14 +96,10 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
-  // 글 상세 보기 함수 수정
   const fetchPostDetail = async (post) => {
-    // ★ [추가] 상세 보기로 들어갈 때 기록 남기기
     window.history.pushState({ menu: "BOARD", view: "DETAIL" }, "");
-
     await supabase.rpc("increment_view_count", { row_id: post.id });
     setCurrentPost(post);
-    // ... (나머지 코드는 그대로)
     fetchComments(post.id);
     fetchVotes(post.id);
     setView("DETAIL");
@@ -110,7 +131,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     }
   };
 
-  // --- ★ [수정됨] 글 등록/수정 핸들러 ---
   const handleWriteSubmit = async () => {
     if (!session) return alert("로그인이 필요합니다.");
     if (!form.title.trim()) return alert("제목을 입력해주세요.");
@@ -119,10 +139,11 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     if (!textOnly && !form.content.includes("<img"))
       return alert("내용을 입력해주세요.");
 
-    // ★ [핵심 해결] 카테고리가 없으면 'FREE(자유게시판)'로 강제 설정
-    // 이렇게 해야 "전체 게시판"에서 글을 써도 에러가 안 납니다.
-    const targetCategory = category || "FREE";
+    // ★ [수정] 닉네임 우선순위: 1. DB/State의 내 닉네임 -> 2. 없으면 "모험가"
+    // (userStats가 늦게 로딩될 경우를 대비해 myNickname state 사용)
+    const finalNickname = myNickname || "모험가";
 
+    const targetCategory = category || "FREE";
     const payload = {
       title: form.title,
       content: form.content,
@@ -132,7 +153,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
 
     try {
       if (editingId) {
-        // 수정
         const { error } = await supabase
           .from("posts")
           .update(payload)
@@ -141,20 +161,19 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         if (error) throw error;
         alert("수정되었습니다.");
       } else {
-        // 등록
         const { error } = await supabase.from("posts").insert([
           {
             ...payload,
             user_id: session.user.id,
-            nickname: userStats?.character?.nickname || "모험가",
+            nickname: finalNickname, // ★ 확정된 닉네임 사용
             view_count: 0,
             like_count: 0,
           },
         ]);
         if (error) throw error;
-        alert("등록되었습니다."); // ★ 성공 알림
+        alert("등록되었습니다.");
       }
-      handleGoList(); // 목록으로 이동
+      handleGoList();
     } catch (error) {
       alert("작성 실패: " + error.message);
       console.error(error);
@@ -189,13 +208,15 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
       .delete()
       .match({ post_id: currentPost.id, user_id: session.user.id });
     if (votes.myVote !== type) {
-      await supabase.from("post_votes").insert([
-        {
-          post_id: currentPost.id,
-          user_id: session.user.id,
-          vote_type: type,
-        },
-      ]);
+      await supabase
+        .from("post_votes")
+        .insert([
+          {
+            post_id: currentPost.id,
+            user_id: session.user.id,
+            vote_type: type,
+          },
+        ]);
     }
     const { count } = await supabase
       .from("post_votes")
@@ -221,7 +242,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
         post_id: currentPost.id,
         content: commentInput,
         user_id: session.user.id,
-        nickname: userStats?.character?.nickname || "모험가",
+        nickname: myNickname || "모험가", // 댓글도 동일하게 적용
       },
     ]);
     if (!error) {
@@ -231,7 +252,6 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
   };
 
   const formatDate = (date) => new Date(date).toLocaleDateString();
-
   const handleSort = (order) => {
     setSortOrder(order);
     fetchPosts(order);
@@ -277,12 +297,31 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
     []
   );
 
+  // ★ [핵심] 테이블 컬럼 너비 강제 설정 (깨짐 방지)
+  // title을 제외한 나머지는 고정 너비(px), title은 auto
+  const TableColGroup = () => (
+    <colgroup>
+      <col style={{ width: "80px" }} /> {/* 번호/공지 */}
+      <col style={{ width: "auto" }} /> {/* 제목 (나머지 공간) */}
+      <col style={{ width: "120px" }} /> {/* 작성자 */}
+      <col style={{ width: "100px" }} /> {/* 날짜 */}
+      <col style={{ width: "70px" }} /> {/* 조회 */}
+      <col style={{ width: "70px" }} /> {/* 추천 */}
+    </colgroup>
+  );
+
   return (
     <div className="board-container">
       <div className="board-header">
         <div className="board-title">
           <span>
-            {category === "NOTICE" ? "📢" : category === "GUIDE" ? "📘" : "💬"}
+            {category === "NOTICE"
+              ? "📢"
+              : category === "GUIDE"
+              ? "📘"
+              : category === "FREE"
+              ? "💬"
+              : "📝"}
           </span>
           {category === "NOTICE" && "공지사항"}
           {category === "GUIDE" && "공략 게시판"}
@@ -300,24 +339,25 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
             <div className="best-posts-area">
               <span className="best-label">🏆 주간 베스트 인기글</span>
               <table className="cafe-table">
+                {/* ★ 여기도 colgroup 적용 */}
+                <colgroup>
+                  <col style={{ width: "50px" }} />
+                  <col style={{ width: "auto" }} />
+                  <col style={{ width: "120px" }} />
+                  <col style={{ width: "80px" }} />
+                </colgroup>
                 <tbody>
                   {bestPosts.map((post, idx) => (
                     <tr key={post.id} onClick={() => fetchPostDetail(post)}>
-                      <td
-                        style={{
-                          width: "50px",
-                          color: "#ffcc00",
-                          fontWeight: "bold",
-                        }}
-                      >
+                      <td style={{ color: "#ffcc00", fontWeight: "bold" }}>
                         {idx + 1}
                       </td>
                       <td className="col-title">
                         <span className="best-badge">BEST</span>
                         <span className="post-title-text">{post.title}</span>
                       </td>
-                      <td style={{ width: "120px" }}>{post.nickname}</td>
-                      <td style={{ width: "80px" }}>❤️ {post.like_count}</td>
+                      <td>{post.nickname}</td>
+                      <td>❤️ {post.like_count}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -359,17 +399,20 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
           </div>
 
           <table className="cafe-table">
+            {/* ★ [핵심] 컬럼 너비 강제 고정 */}
+            <TableColGroup />
             <thead>
               <tr>
-                <th style={{ width: "60px" }}>번호</th>
+                <th>번호</th>
                 <th>제목</th>
-                <th style={{ width: "120px" }}>작성자</th>
-                <th style={{ width: "100px" }}>날짜</th>
-                <th style={{ width: "70px" }}>조회</th>
-                <th style={{ width: "70px" }}>추천</th>
+                <th>작성자</th>
+                <th>날짜</th>
+                <th>조회</th>
+                <th>추천</th>
               </tr>
             </thead>
             <tbody>
+              {/* 공지사항 */}
               {posts
                 .filter((p) => p.is_notice)
                 .map((post) => (
@@ -398,6 +441,7 @@ const BoardPage = ({ setActivePage, userStats, category }) => {
                     <td>{post.like_count}</td>
                   </tr>
                 ))}
+              {/* 일반글 */}
               {posts
                 .filter((p) => !p.is_notice)
                 .map((post) => (
