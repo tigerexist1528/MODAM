@@ -51,11 +51,14 @@ const Home = ({ setActivePage }) => {
   }, []);
 
   const fetchLatestNotices = async () => {
+    // ★ [수정] 'notices' 테이블 -> 실제 게시판인 'posts' 테이블로 변경
+    // 카테고리가 'NOTICE'인 글만 최신순으로 5개 가져옴
     const { data, error } = await supabase
-      .from("notices")
-      .select("id, title, created_at")
+      .from("posts")
+      .select("id, title, created_at, category") // category 확인용
+      .eq("category", "NOTICE") // ★ 공지사항만 필터링
       .order("created_at", { ascending: false })
-      .limit(5); // 최근 5개만
+      .limit(5);
 
     if (!error && data) {
       setNotices(data);
