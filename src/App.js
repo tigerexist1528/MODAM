@@ -222,11 +222,8 @@ export default function App() {
     // A. 초기 접속 시 세션 체크
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      // (기존 기능 유지)
-      if (session) {
-        fetchPresets(session);
-        checkUserProfile(session.user.id);
-      } // ★ (추가) 닉네임 확인
+      fetchPresets(session); // (기존 기능 유지)
+      if (session) checkUserProfile(session.user.id); // ★ (추가) 닉네임 확인
     });
 
     // B. 로그인/로그아웃 상태 변화 감지
@@ -234,10 +231,9 @@ export default function App() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // (기존 기능 유지)
+      fetchPresets(session); // (기존 기능 유지)
 
       if (session) {
-        fetchPresets(session);
         checkUserProfile(session.user.id); // ★ (추가) 로그인하면 닉네임 확인
       } else {
         setUserProfile(null); // ★ (추가) 로그아웃하면 닉네임 비우기
@@ -3143,6 +3139,26 @@ export default function App() {
           className="auth-buttons"
           style={{ display: "flex", alignItems: "center" }}
         >
+          <button
+            onClick={toggleTheme}
+            style={{
+              background: "transparent",
+              border: "1px solid #555",
+              borderRadius: "20px",
+              padding: "5px 12px",
+              // 다크모드면 노란색, 라이트모드면 검은색
+              color: theme === "dark" ? "#ffcc00" : "#333",
+              cursor: "pointer",
+              marginRight: "15px", // 오른쪽 버튼들과 간격 띄우기
+              fontSize: "1.2rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            title="테마 변경"
+          >
+            {theme === "dark" ? "🌙" : "☀️"}
+          </button>
           {session ? (
             <div className="user-info-area">
               <div
