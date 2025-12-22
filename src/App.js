@@ -217,43 +217,35 @@ export default function App() {
     setSystemModal
   );
 
-  // 4. useEffect (인증 로직 + 프로필 체크 + URL 청소)
+  // 4. useEffect (인증 로직 + 프로필 체크)
   useEffect(() => {
-    // A. 초기 접속 시 세션 체크 (혹시 이미 로그인 되어있는지)
+    // A. 초기 접속 시 세션 체크
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
+      // (기존 기능 유지)
       if (session) {
         fetchPresets(session);
         checkUserProfile(session.user.id);
-      }
+      } // ★ (추가) 닉네임 확인
     });
 
-    // B. 로그인/로그아웃 상태 변화 감지 (여기가 진짜 핵심!)
+    // B. 로그인/로그아웃 상태 변화 감지
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      // (기존 기능 유지)
 
       if (session) {
         fetchPresets(session);
-        checkUserProfile(session.user.id);
-
-        // ★ [핵심 해결] 로그인 성공 후, 주소창에 남은 #access_token 지저분한 문자열 강제 제거!
-        // (새로고침 없이 주소만 깔끔하게 바꿈)
-        if (
-          window.location.hash &&
-          window.location.hash.includes("access_token")
-        ) {
-          const cleanUrl = window.location.pathname + window.location.search;
-          window.history.replaceState(null, "", cleanUrl);
-        }
+        checkUserProfile(session.user.id); // ★ (추가) 로그인하면 닉네임 확인
       } else {
-        setUserProfile(null);
+        setUserProfile(null); // ★ (추가) 로그아웃하면 닉네임 비우기
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchPresets]); // 의존성 배열 유지
+  }, [fetchPresets]);
 
   // 4-2. 공유 링크 감지 로직 (독립된 훅으로 분리)
   useEffect(() => {
