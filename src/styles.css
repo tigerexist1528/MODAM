@@ -4688,7 +4688,7 @@ body {
 }
 
 /* ========================================= */
-/* 🌞 라이트 모드 (Light Mode) 패치 - 최종 수정본 */
+/* 🌞 라이트 모드 (Light Mode) 패치 - 최종 완결판 */
 /* ========================================= */
 
 /* 1. 기본 변수 재정의 */
@@ -4703,70 +4703,68 @@ body.light-mode {
   color: var(--text-main) !important;
 }
 
-/* 2. GNB (메뉴바) 강제 밝게 만들기 */
-body.light-mode .gnb {
+/* 2. 네비게이션바 (GNB + LNB) 완벽 하얗게 */
+body.light-mode .gnb,
+body.light-mode .lnb-container {
+  /* ★ LNB 추가 */
   background-color: #ffffff !important;
   border-bottom: 1px solid #e5e7eb !important;
 }
+
+/* GNB 버튼 */
 body.light-mode .gnb button {
-  color: #6b7280 !important; /* 평소엔 회색 */
+  color: #6b7280 !important;
 }
 body.light-mode .gnb button:hover {
-  color: #111827 !important; /* 올리면 진한 검정 */
+  color: #111827 !important;
   background-color: #f3f4f6 !important;
 }
 body.light-mode .gnb button.active {
-  color: #2563eb !important; /* 활성화: 쨍한 파랑 */
+  color: #2563eb !important;
 }
+
+/* ★ LNB 탭 버튼 */
+body.light-mode .lnb-tab {
+  color: #6b7280 !important; /* 평소엔 회색 */
+}
+body.light-mode .lnb-tab:hover {
+  color: #111 !important;
+}
+body.light-mode .lnb-tab.active {
+  color: #2563eb !important; /* 활성화 파랑 */
+  border-bottom-color: #2563eb !important; /* 밑줄 파랑 */
+}
+
 /* 헤더 전체 */
 body.light-mode .site-header {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.95) !important;
   border-bottom: 1px solid #e5e7eb !important;
 }
 body.light-mode .logo-area span {
-  color: #d97706 !important; /* 로고 MODAM 부분 */
+  color: #d97706 !important;
 }
 body.light-mode .logo-area {
-  color: #000 !important; /* CALCULATOR 부분 */
+  color: #000 !important;
 }
 
-/* 3. 게시판 목록 (글씨가 안 보이는 문제 해결) */
-body.light-mode .post-title-text {
-  color: #111827 !important; /* 제목: 진한 검정 */
+/* 3. 홈 화면 (배너 & 카드) */
+/* 히어로 배너: 어두운 그라데이션 제거하고 밝은 그라데이션 적용 */
+body.light-mode .hero-section {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  border-bottom: 1px solid #bae6fd !important;
 }
-body.light-mode .post-title-text:hover {
-  color: #2563eb !important; /* 호버: 파란색 */
-  text-decoration: underline;
+body.light-mode .hero-title {
+  color: #1e293b !important; /* 진한 남색 타이틀 */
+  text-shadow: none !important;
 }
-body.light-mode .cafe-table th {
-  background-color: #f9fafb !important;
-  color: #4b5563 !important;
-  border-bottom: 1px solid #d1d5db !important;
-  font-weight: bold !important;
+body.light-mode .hero-subtitle {
+  color: #475569 !important;
 }
-body.light-mode .cafe-table td {
-  color: #374151 !important; /* 내용: 진한 회색 */
-  border-bottom: 1px solid #e5e7eb !important;
-}
-body.light-mode .cafe-table tr:hover {
-  background-color: #eff6ff !important; /* 호버 시 연한 파랑 배경 */
+body.light-mode .section-title {
+  color: #111 !important;
 }
 
-/* 4. 게시판 상세 내용 (본문) */
-body.light-mode .detail-title {
-  color: #000000 !important;
-}
-body.light-mode .detail-meta {
-  color: #6b7280 !important;
-}
-body.light-mode .detail-content {
-  color: #1f2937 !important; /* 본문 내용 진하게 */
-}
-body.light-mode .detail-header {
-  border-bottom: 1px solid #d1d5db !important;
-}
-
-/* 5. [강화된 버전] 모든 탭의 컨테이너 박스들 강제 화이트닝 */
+/* 4. 컨테이너 박스들 (광역 화이트닝) */
 body.light-mode .board-container,
 body.light-mode .write-container,
 body.light-mode .board-toolbar,
@@ -4777,37 +4775,67 @@ body.light-mode .best-posts-area,
 body.light-mode .naesil-row, 
 body.light-mode .item-card,  
 body.light-mode .calc-game-container,
-/* 👇 추가: 계산기, 시뮬레이터, 랭킹 등에서 쓸법한 클래스들 추측 추가 */
-body.light-mode .calculator-wrapper,
-body.light-mode .simulator-box,
-body.light-mode .ranking-container,
-body.light-mode .game-area,
-body.light-mode .result-box,
-body.light-mode table /* 모든 테이블 */ {
+/* 👇 추가된 클래스들 (홈, 미니게임, 기타) */
+body.light-mode .info-card,       /* 홈 정보 카드 */
+body.light-mode .event-card,      /* 이벤트 카드 */
+body.light-mode .quick-btn,       /* 퀵 메뉴 버튼 */
+body.light-mode .polishing-stage, /* 미니게임 스테이지 */
+body.light-mode .inventory-box,   /* 미니게임 인벤 */
+body.light-mode .inv-slot,        /* 인벤 슬롯 */
+body.light-mode .stats-board,     /* 통계판 */
+body.light-mode .notice-row,      /* 공지 한 줄 */
+body.light-mode table             /* 모든 테이블 */ {
   background: #ffffff !important;
   border-color: #d1d5db !important;
   color: #333333 !important;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
 }
 
-/* 랭킹 탭 같은 곳의 테이블 글씨 강제 변환 */
-body.light-mode table th {
-  background: #f3f4f6 !important;
-  color: #111 !important;
-}
-body.light-mode table td {
+/* 5. 미니게임/홈 글씨 색상 보정 */
+body.light-mode .notice-subj,
+body.light-mode .event-title,
+body.light-mode .bs-title,
+body.light-mode .stats-row {
   color: #333 !important;
 }
-
-/* 혹시 모를 모든 패널급 div들 (조심스럽게 적용) */
-body.light-mode div[class*="container"],
-body.light-mode div[class*="wrapper"],
-body.light-mode div[class*="box"] {
-  /* 배경이 검정(#000, #111 등)인 경우에만 흰색으로 뒤집기 위한 안전장치 */
-  /* (CSS만으로는 조건부 적용이 어려워 위에서 명시한 클래스들이 가장 확실합니다) */
+body.light-mode .notice-dt,
+body.light-mode .event-date,
+body.light-mode .stats-val {
+  color: #666 !important;
+}
+body.light-mode .quick-btn {
+  color: #555 !important;
+}
+body.light-mode .quick-btn:hover {
+  background: #f3f4f6 !important;
+  color: #000 !important;
+  border-color: #d97706 !important;
 }
 
-/* 6. 입력창 (Input, Select, Editor) */
+/* 6. 게시판 가독성 (기존 유지) */
+body.light-mode .post-title-text {
+  color: #111827 !important;
+}
+body.light-mode .post-title-text:hover {
+  color: #2563eb !important;
+}
+body.light-mode .cafe-table th {
+  background-color: #f9fafb !important;
+  color: #4b5563 !important;
+  border-bottom: 1px solid #d1d5db !important;
+}
+body.light-mode .cafe-table td {
+  color: #374151 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+body.light-mode .cafe-table tr:hover {
+  background-color: #eff6ff !important;
+}
+body.light-mode .detail-content {
+  color: #1f2937 !important;
+}
+
+/* 7. 입력창 & 에디터 (흰 배경) */
 body.light-mode input,
 body.light-mode select,
 body.light-mode textarea,
@@ -4820,7 +4848,7 @@ body.light-mode .write-input {
   color: #000000 !important;
 }
 body.light-mode .ql-editor {
-  color: #000000 !important; /* 에디터 작성 글씨 */
+  color: #000000 !important;
 }
 body.light-mode .ql-toolbar {
   background-color: #f3f4f6 !important;
@@ -4831,7 +4859,7 @@ body.light-mode .ql-container {
   border-color: #d1d5db !important;
 }
 
-/* 7. 버튼들 가독성 */
+/* 8. 버튼들 */
 body.light-mode .btn-dark {
   background: #e5e7eb !important;
   color: #374151 !important;
@@ -4846,20 +4874,12 @@ body.light-mode .search-btn {
   color: #fff !important;
 }
 
-/* 8. 댓글창 */
-body.light-mode .comment-box strong {
-  color: #111 !important; /* 닉네임 */
-}
-body.light-mode .comment-box div {
-  color: #4b5563 !important; /* 내용 */
-}
-
 /* 9. 베스트 게시글 박스 */
 body.light-mode .best-posts-area {
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
   border: 1px solid #bae6fd !important;
 }
 body.light-mode .best-label {
-  color: #0284c7 !important; /* 진한 파랑 */
+  color: #0284c7 !important;
   border-bottom: 1px solid #bae6fd !important;
 }
