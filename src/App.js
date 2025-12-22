@@ -7,6 +7,7 @@ import "./styles.css";
 // =============================================================================
 // data.js에서 필요한 데이터들을 가져옵니다.
 import { updateURL } from "./utils/urlHelper";
+import { applyJobMechanics } from "./utils/JobMechanics";
 
 import {
   // 1. 핵심 아이템 DB
@@ -1164,10 +1165,28 @@ export default function App() {
           const finalFlat =
             skill.baseFlatDamage + skill.flatDamageGrowth * (finalLv - 1);
           const skillBaseDmg = mainAtkVal * (finalRate / 100) + finalFlat;
-          const oneHitDmg =
+
+          // 1. 기본 1타 데미지 계산 (기존과 동일)
+          const rawOneHitDmg =
             skillBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
 
-          // 횟수 계산
+          // ★ Context 포장하기 (두뇌에게 줄 재료들)
+          const mechContext = {
+            allSkills: SKILL_DB, // 다른 스킬 찾기용
+            commonFactor, // 공통 증뎀 계수
+            mainAtkVal, // 캐릭터 공격력 (정수뿌리기 계산용)
+            tpMultiplier, // TP 계수
+            specificSkillFactor, // 특정 스킬 레벨링/룬 계수
+          };
+
+          // ★ 어댑터 호출 (재료 함께 전달)
+          const {
+            finalDmg: oneHitDmg,
+            additionalDmg: mechAdd,
+            extraText,
+          } = applyJobMechanics(skill, userStats, rawOneHitDmg, mechContext);
+          
+          // 횟수 계산 (기존 코드 유지)
           let cooldown = skill.cooltime;
           let realCooldown = cooldown * (1 - finalCdrPct / 100);
 
@@ -1186,20 +1205,21 @@ export default function App() {
             nugolCount = 15; // 패시브/평타류는 고정 가정
           else {
             if (realCooldown > 0) {
-              nugolCount = Math.floor(60 / realCooldown);
-              // 쿨타임이 딱 떨어지지 않는 한, 0초에 쓰고 쿨 돌 때마다 쓰면 +1회가 됨
-              // (예: 45초 쿨 -> 0초, 45초 -> 2회)
-              // 단, 정확히 60초 쿨이면 0초, 60초(종료시점) -> 애매하지만 보통 1회 혹은 2회.
-              // 여기서는 0초 발동을 가정하여 +1을 해줍니다.
               if (realCooldown < 60) nugolCount += 1;
-              else nugolCount = 1; // 60초 이상은 무조건 1회
+              else nugolCount = 1;
             } else {
-              nugolCount = 60; // 쿨 0초면 무한난사? 1초 1회 제한
+              nugolCount = 60;
             }
           }
 
-          const totalDmg = oneHitDmg * castsPerMin;
-          const nugolTotalDmg = oneHitDmg * nugolCount;
+          // ★★★ [3. 최종 합산 수정] 추가 데미지(mechAdd)까지 포함 ★★★
+          // 기본 딜 + (추가 딜 * 횟수)
+          const totalDmg =
+            oneHitDmg * castsPerMin + (mechAdd || 0) * castsPerMin;
+
+          // 누골 딜에도 똑같이 적용
+          const nugolTotalDmg =
+            oneHitDmg * nugolCount + (mechAdd || 0) * nugolCount;
 
           totalOneMinSkillDmg += totalDmg;
 
@@ -1235,8 +1255,16 @@ export default function App() {
         const maxFlat =
           skill.baseFlatDamage + skill.flatDamageGrowth * (maxPossibleLv - 1);
         const maxBaseDmg = mainAtkVal * (maxRate / 100) + maxFlat;
-        const maxOneHitDmg =
+
+        // 1. 기본 잠재력 1타 데미지 계산
+        const rawMaxOneHitDmg =
           maxBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
+
+        // ★★★ [2. 만능 어댑터 연결] 잠재력에도 특수 로직 적용 ★★★
+        const {
+          finalDmg: maxOneHitDmg, // 특수능력이 반영된 데미지를 'maxOneHitDmg'로 덮어씁니다
+          additionalDmg: mechAdd, // 추가 데미지 (지속피해 등)
+        } = applyJobMechanics(skill, userStats, rawMaxOneHitDmg, SKILL_DB);
 
         let cooldown = skill.cooltime;
         let realCooldown = cooldown * (1 - finalCdrPct / 100);
@@ -1247,7 +1275,8 @@ export default function App() {
           else castsPerMin = 1;
         }
 
-        const potentialTotalDmg = maxOneHitDmg * castsPerMin;
+        const potentialTotalDmg =
+          maxOneHitDmg * castsPerMin + (mechAdd || 0) * castsPerMin;
 
         potentialList.push({
           id: skill.id,
