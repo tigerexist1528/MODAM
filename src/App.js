@@ -2813,9 +2813,6 @@ export default function App() {
           finalStats={finalStats}
           totalGearPoint={totalGearPoint}
           enemyLevel={enemyLevel}
-          setEnemyLevel={setEnemyLevel}
-          isEnemyLevelShaking={isEnemyLevelShaking}
-          setIsEnemyLevelShaking={setIsEnemyLevelShaking}
           userStats={userStats}
           finalDamageInfo={finalDamageInfo}
           setStatDetailModal={setStatDetailModal}
