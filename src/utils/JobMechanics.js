@@ -35,12 +35,13 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
     const isJobSkill =
       skill.category !== "common" && skill.category !== "basic";
 
+    // 1. 성화(Holy Fire)
     if (holyFireLv > 0 && isJobSkill) {
       const bonusRate = 8 + (holyFireLv - 1);
       const bonusDmg = currentDmg * (bonusRate / 100);
 
-      // ★ [수정] 내 데미지(additionalDmg)에 더하지 않고, 이체할 금액(transfer)에 담음
       result.mechanicTransferDmg = bonusDmg;
+      result.transferTargetId = "SK_IS_14"; // ★ [NEW] 배달 받을 스킬 ID 명시
 
       // 텍스트는 표시 (UI에서는 +XX% 보임)
       const txt = `성화(+${bonusRate}%)`;

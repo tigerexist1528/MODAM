@@ -1086,9 +1086,10 @@ export default function App() {
       const potentialList = []; // 기존 (잠재력)
       const nugolList = []; // ★ [New] 누골 (실전형 정수 카운트)
 
-      // ★ [NEW] 성화 데미지 저금통 초기화 (변수 선언)
-      let holyFireAccumulated = 0; // '내 스킬트리'용 저금통
-      let holyFireNugolAccumulated = 0; // '누골'용 저금통
+      // [FIX] 특정 변수 대신, 범용 '우체통'을 하나 만듭니다.
+      // 구조: { "SK_IS_14": 5000, "SK_IS_99": 1200 }
+      const dmgTransferMap = {}; // 내 스킬트리용 우체통
+      const nugolTransferMap = {}; // 누골용 우체통
 
       // [공통 팩터 계산] (변수명 충돌 수정 Ver)
 
@@ -1187,7 +1188,8 @@ export default function App() {
           const {
             finalDmg: oneHitDmg,
             additionalDmg: mechAdd,
-            mechanicTransferDmg, // 이체할 금액
+            mechanicTransferDmg,
+            transferTargetId, // ★ [NEW] 받는 사람 ID (예: "SK_IS_14")
             extraText,
           } = applyJobMechanics(skill, userStats, rawOneHitDmg, mechContext);
 
@@ -1217,11 +1219,17 @@ export default function App() {
           }
 
           // ★★★ [NEW] 저금통 입금 (이곳이 핵심입니다) ★★★
-          if (mechanicTransferDmg > 0) {
-            // 내 스킬트리용 입금 (이론상 횟수 곱하기)
-            holyFireAccumulated += mechanicTransferDmg * castsPerMin;
-            // 누골용 입금 (실전 횟수 곱하기)
-            holyFireNugolAccumulated += mechanicTransferDmg * nugolCount;
+          if (mechanicTransferDmg > 0 && transferTargetId) {
+            // 1. 내 스킬트리용 입금
+            const totalTransfer = mechanicTransferDmg * castsPerMin;
+            // 기존에 값이 있으면 더하고, 없으면 초기화
+            dmgTransferMap[transferTargetId] =
+              (dmgTransferMap[transferTargetId] || 0) + totalTransfer;
+
+            // 2. 누골용 입금
+            const totalNugolTransfer = mechanicTransferDmg * nugolCount;
+            nugolTransferMap[transferTargetId] =
+              (nugolTransferMap[transferTargetId] || 0) + totalNugolTransfer;
           }
 
           // ★ 내 딜 계산 (transfer는 남 줄 돈이니 제외, mechAdd는 내 돈이니 포함)
@@ -1373,25 +1381,30 @@ export default function App() {
           });
       });
 
-      if (holyFireAccumulated > 0) {
-        // 리스트에서 '성화' 스킬 찾기
-        const target = myTreeList.find((item) => item.name === "성화");
-        if (target) {
-          target.rawDmg += holyFireAccumulated; // 실제 값 합산
-          target.damage = Math.floor(target.rawDmg); // 표기용 정수값 갱신
-          // (참고: totalOneMinSkillDmg 전역 변수는 이미 위에서 입금할 때 처리 안했으므로 여기서 더해줌)
-          totalOneMinSkillDmg += holyFireAccumulated;
-        }
-      }
+      // ★★★ [FIX] 우체통 털기 (범용 로직) ★★★
+      // dmgTransferMap에 있는 모든 배달물을 주인에게 전달합니다.
+      Object.keys(dmgTransferMap).forEach((targetId) => {
+        // 1. 내 스킬트리 리스트에서 주인 찾기
+        const target = myTreeList.find((item) => item.id === targetId);
+        const amount = dmgTransferMap[targetId];
 
-      // 2. 누골 리스트 처리
-      if (holyFireNugolAccumulated > 0) {
-        const targetNugol = nugolList.find((item) => item.name === "성화");
-        if (targetNugol) {
-          targetNugol.rawDmg += holyFireNugolAccumulated;
-          targetNugol.damage = Math.floor(targetNugol.rawDmg);
+        if (target && amount > 0) {
+          target.rawDmg += amount;
+          target.damage = Math.floor(target.rawDmg);
+          totalOneMinSkillDmg += amount; // 전역 합산도 잊지 말기
         }
-      }
+      });
+
+      // 2. 누골 리스트 배달
+      Object.keys(nugolTransferMap).forEach((targetId) => {
+        const target = nugolList.find((item) => item.id === targetId);
+        const amount = nugolTransferMap[targetId];
+
+        if (target && amount > 0) {
+          target.rawDmg += amount;
+          target.damage = Math.floor(target.rawDmg);
+        }
+      });
 
       // 정렬 (데미지 높은 순)
       myTreeList.sort((a, b) => b.rawDmg - a.rawDmg);
