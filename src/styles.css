@@ -4688,227 +4688,80 @@ body {
 }
 
 /* ========================================= */
-/* 🌞 라이트 모드 (Light Mode) 패치 - 완결판 (계산기 포함) */
+/* 🚑 라이트 모드 추가 보강 2 (모달, 바텀시트, 직업아이콘) */
 /* ========================================= */
 
-/* 1. 기본 변수 재정의 */
-body.light-mode {
-  --bg-dark: #f3f4f6; /* 전체 배경: 밝은 회색 */
-  --bg-panel: #ffffff; /* 패널 배경: 완전 흰색 */
-  --border-color: #d1d5db; /* 테두리: 연한 회색 */
-  --text-main: #1f2937; /* 기본 글씨: 진한 남색/회색 */
-  --text-gold: #d97706; /* 골드: 흰 배경용 진한 오렌지 */
-
-  background-color: var(--bg-dark) !important;
-  color: var(--text-main) !important;
-}
-
-/* 2. 네비게이션바 (GNB + LNB) */
-body.light-mode .gnb,
-body.light-mode .lnb-container,
-body.light-mode .site-header {
-  background-color: #ffffff !important;
-  border-bottom: 1px solid #e5e7eb !important;
-}
-body.light-mode .gnb button,
-body.light-mode .lnb-tab {
-  color: #6b7280 !important;
-}
-body.light-mode .gnb button:hover,
-body.light-mode .lnb-tab:hover {
-  background-color: #f9fafb !important;
-  color: #111 !important;
-}
-body.light-mode .gnb button.active,
-body.light-mode .lnb-tab.active {
-  color: #2563eb !important;
-  border-bottom-color: #2563eb !important;
-}
-body.light-mode .logo-area span {
-  color: #d97706 !important;
-}
-body.light-mode .logo-area {
-  color: #000 !important;
-}
-
-/* 3. ★ [핵심] 계산기/시뮬레이터 박스 강제 화이트닝 ★ */
-/* 그라데이션이 들어간 버튼과 박스들의 배경을 흰색으로 덮어씁니다 */
-body.light-mode .naesil-btn,
-body.light-mode .set-group-box,
-body.light-mode .char-btn,
-body.light-mode .bs-box,
-body.light-mode .item-card,
-body.light-mode .dmg-box,
-body.light-mode .total-dmg-box,
-body.light-mode .inventory-box,
-body.light-mode .polishing-stage,
-body.light-mode .rune-hex,
-body.light-mode .emblem-slot-container {
+/* 1. 각종 모달 & 바텀시트 하얗게 만들기 */
+body.light-mode .modal-content,        /* 기본 모달 */
+body.light-mode .alert-modal-content,  /* 알림 모달 */
+body.light-mode .picker-content,       /* 아이템 선택 모달 */
+body.light-mode .bottom-sheet,         /* 바텀시트 전체 */
+body.light-mode .job-picker-content {
+  /* 직업 선택 모달 */
   background: #ffffff !important;
-  background-image: none !important; /* 기존 그라데이션 제거 */
   border-color: #d1d5db !important;
   color: #333 !important;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15) !important; /* 그림자 부드럽게 */
 }
 
-/* 계산기 내부 텍스트 색상 보정 */
-body.light-mode .naesil-btn-label,
-body.light-mode .set-group-label,
-body.light-mode .dmg-label {
-  color: #6b7280 !important; /* 라벨은 연한 회색 */
+/* 2. 모달/바텀시트 헤더 & 닫기 버튼 */
+body.light-mode .sheet-header,
+body.light-mode .picker-header,
+body.light-mode .modal-footer-btns {
+  background-color: #f9fafb !important; /* 헤더는 살짝 회색톤 */
+  border-color: #e5e7eb !important;
 }
-body.light-mode .naesil-btn-val,
-body.light-mode .active-set-item,
-body.light-mode .dmg-val,
-body.light-mode .set-name-base {
-  color: #111 !important; /* 값은 진한 검정 */
-  text-shadow: none !important;
-}
-
-/* 4. ★ 캐릭터 중앙 무대 (검은 원형 배경 제거) ★ */
-body.light-mode .char-illust-box {
-  background: radial-gradient(
-    circle at center,
-    #ffffff 0%,
-    #e5e7eb 70%
-  ) !important;
-  border-color: #d1d5db !important;
-}
-
-/* 5. ★ 장비 슬롯 (검은색 네모 제거) ★ */
-body.light-mode .game-slot,
-body.light-mode .card-thumb,
-body.light-mode .st-v-icon-box,
-body.light-mode .job-icon-box,
-body.light-mode .inv-slot,
-body.light-mode .weapon-slot,
-body.light-mode .emblem-socket {
-  background-color: #f3f4f6 !important; /* 아주 연한 회색 */
-  border-color: #d1d5db !important;
-}
-/* 장비 슬롯 이름표 */
-body.light-mode .slot-name-tag,
-body.light-mode .st-v-name {
+body.light-mode .sheet-title,
+body.light-mode .picker-header h3,
+body.light-mode .alert-message {
   color: #111 !important;
-  text-shadow: none !important;
+}
+body.light-mode .sheet-close,
+body.light-mode .picker-close-btn,
+body.light-mode .close-btn {
+  color: #6b7280 !important; /* 닫기 버튼 회색 */
+}
+body.light-mode .sheet-close:hover,
+body.light-mode .picker-close-btn:hover,
+body.light-mode .close-btn:hover {
+  background-color: #e5e7eb !important;
+  color: #111 !important;
 }
 
-/* 6. 공통 컨테이너 광역 적용 */
-body.light-mode .board-container,
-body.light-mode .write-container,
-body.light-mode .board-toolbar,
-body.light-mode .comment-box,
-body.light-mode .faq-item,
-body.light-mode .modal-content,
-body.light-mode .best-posts-area,
-body.light-mode .naesil-row,
-body.light-mode .calc-game-container,
-body.light-mode .info-card,
-body.light-mode .event-card,
-body.light-mode .quick-btn,
-body.light-mode .notice-row,
-body.light-mode .job-picker-content,
-body.light-mode .skill-modal-content,
-body.light-mode .bottom-stat-panel,
-body.light-mode .stat-col,
-body.light-mode table {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
+/* 3. 직업 아이콘 박스 & 이름표 */
+body.light-mode .job-icon-box {
+  background-color: #f3f4f6 !important; /* 아이콘 배경 밝은 회색 */
   border-color: #d1d5db !important;
-  color: #333 !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+/* 마우스 올렸을 때 */
+body.light-mode .job-card:hover .job-icon-box {
+  background-color: #ffffff !important;
+  border-color: #d97706 !important; /* 골드 테두리 */
 }
 
-/* 7. 입력창 & 에디터 */
-body.light-mode input,
-body.light-mode select,
-body.light-mode textarea,
-body.light-mode .search-select,
-body.light-mode .search-input,
-body.light-mode .comment-input,
-body.light-mode .write-input {
-  background-color: #ffffff !important;
-  border: 1px solid #d1d5db !important;
-  color: #000000 !important;
-}
-body.light-mode .ql-editor {
-  color: #000000 !important;
-}
-body.light-mode .ql-toolbar {
+body.light-mode .job-name-tag {
   background-color: #f3f4f6 !important;
+  color: #4b5563 !important;
   border-color: #d1d5db !important;
 }
-body.light-mode .ql-container {
+body.light-mode .job-card:hover .job-name-tag {
+  color: #111 !important;
+  background-color: #fff !important;
+  border-color: #9ca3af !important;
+}
+
+/* 4. 전직 선택 카드 (가로형) */
+body.light-mode .class-card-small {
   background-color: #ffffff !important;
   border-color: #d1d5db !important;
 }
-
-/* 8. 게시판/테이블 가독성 */
-body.light-mode .post-title-text {
-  color: #111827 !important;
-}
-body.light-mode .cafe-table th {
-  background-color: #f9fafb !important;
-  color: #4b5563 !important;
-  border-bottom: 1px solid #d1d5db !important;
-}
-body.light-mode .cafe-table td {
-  color: #374151 !important;
-  border-bottom: 1px solid #e5e7eb !important;
-}
-body.light-mode .cafe-table tr:hover {
-  background-color: #eff6ff !important;
-}
-body.light-mode .detail-content {
-  color: #1f2937 !important;
-}
-
-/* 9. 버튼들 */
-body.light-mode .btn-dark,
-body.light-mode .alert-btn,
-body.light-mode .modal-confirm-btn {
-  background: #e5e7eb !important;
-  color: #374151 !important;
-  border: 1px solid #d1d5db !important;
-}
-body.light-mode .btn-dark:hover {
-  background: #d1d5db !important;
-  color: #000 !important;
-}
-body.light-mode .search-btn {
-  background: #374151 !important;
-  color: #fff !important;
-}
-
-/* 10. 홈 화면 (배너 밝게) */
-body.light-mode .hero-section {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
-  border-bottom: 1px solid #bae6fd !important;
-}
-body.light-mode .hero-title {
-  color: #1e293b !important;
+body.light-mode .class-name-overlay {
+  /* 오버레이는 글씨가 보여야 하므로 반투명 흰색 그라데이션 */
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 255, 255, 0) 100%
+  ) !important;
+  color: #111 !important;
   text-shadow: none !important;
-}
-body.light-mode .hero-subtitle {
-  color: #475569 !important;
-}
-body.light-mode .section-title {
-  color: #111 !important;
-}
-body.light-mode .notice-subj,
-body.light-mode .event-title {
-  color: #333 !important;
-}
-body.light-mode .notice-dt,
-body.light-mode .event-date {
-  color: #666 !important;
-}
-
-/* 11. 미니게임 결과창 오버레이 (얘는 어두운게 나음 - 예외) */
-body.light-mode .result-overlay {
-  background: rgba(255, 255, 255, 0.9) !important; /* 밝은 불투명 배경 */
-}
-body.light-mode .result-text {
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.2) !important;
-  color: #111 !important;
 }
