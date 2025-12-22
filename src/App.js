@@ -3139,26 +3139,6 @@ export default function App() {
           className="auth-buttons"
           style={{ display: "flex", alignItems: "center" }}
         >
-          <button
-            onClick={toggleTheme}
-            style={{
-              background: "transparent",
-              border: "1px solid #555",
-              borderRadius: "20px",
-              padding: "5px 12px",
-              // 다크모드면 노란색, 라이트모드면 검은색
-              color: theme === "dark" ? "#ffcc00" : "#333",
-              cursor: "pointer",
-              marginRight: "15px", // 오른쪽 버튼들과 간격 띄우기
-              fontSize: "1.2rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            title="테마 변경"
-          >
-            {theme === "dark" ? "🌙" : "☀️"}
-          </button>
           {session ? (
             <div className="user-info-area">
               <div
