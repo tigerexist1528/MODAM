@@ -2822,7 +2822,10 @@ export default function App() {
           handleStatHover={handleStatHover}
           handleStatMove={handleStatMove}
           handleStatLeave={handleStatLeave}
+          activeSetEffects={activeSetEffects}
+          activeBuffs={activeBuffs}
         />
+        <div style={{ height: "80px" }}></div>
         <footer
           style={{
             position: "fixed", // ★ 화면 맨 아래에 고정 (스크롤 상관없음)
