@@ -1086,6 +1086,10 @@ export default function App() {
       const potentialList = []; // 기존 (잠재력)
       const nugolList = []; // ★ [New] 누골 (실전형 정수 카운트)
 
+      // ★ [NEW] 성화 데미지 저금통 초기화 (변수 선언)
+      let holyFireAccumulated = 0; // '내 스킬트리'용 저금통
+      let holyFireNugolAccumulated = 0; // '누골'용 저금통
+
       // [공통 팩터 계산] (변수명 충돌 수정 Ver)
 
       // 1. [방어력 감소] -> 데미지 증가율로 적용
@@ -1170,27 +1174,28 @@ export default function App() {
           const rawOneHitDmg =
             skillBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
 
-          // ★ Context 포장하기 (두뇌에게 줄 재료들)
+          // ★ Context 포장하기
           const mechContext = {
-            allSkills: SKILL_DB, // 다른 스킬 찾기용
-            commonFactor, // 공통 증뎀 계수
-            mainAtkVal, // 캐릭터 공격력 (정수뿌리기 계산용)
-            tpMultiplier, // TP 계수
-            specificSkillFactor, // 특정 스킬 레벨링/룬 계수
+            allSkills: SKILL_DB,
+            commonFactor,
+            mainAtkVal,
+            tpMultiplier,
+            specificSkillFactor,
           };
 
-          // ★ 어댑터 호출 (재료 함께 전달)
+          // ★ 어댑터 호출 (mechanicTransferDmg 받아오기)
           const {
             finalDmg: oneHitDmg,
             additionalDmg: mechAdd,
+            mechanicTransferDmg, // 이체할 금액
             extraText,
           } = applyJobMechanics(skill, userStats, rawOneHitDmg, mechContext);
-          
+
           // 횟수 계산 (기존 코드 유지)
           let cooldown = skill.cooltime;
           let realCooldown = cooldown * (1 - finalCdrPct / 100);
 
-          // (A) 이론상 횟수 (소수점 포함)
+          // (A) 이론상 횟수
           let castsPerMin = 0;
           if (skill.type === "onhit") castsPerMin = 15;
           else {
@@ -1198,26 +1203,30 @@ export default function App() {
             else castsPerMin = 1;
           }
 
-          // (B) ★ 누골 실전 횟수 (정수, 0초 발동 기준)
-          // 공식: floor(60 / 쿨타임) + 1 (단, 60초 이상 쿨타임은 1회)
+          // (B) 누골 실전 횟수
           let nugolCount = 0;
-          if (skill.type === "onhit")
-            nugolCount = 15; // 패시브/평타류는 고정 가정
+          if (skill.type === "onhit") nugolCount = 15;
           else {
             if (realCooldown > 0) {
-              if (realCooldown < 60) nugolCount += 1;
+              if (realCooldown < 60)
+                nugolCount += 1; // 1분 전 첫 발동 + 쿨타임마다
               else nugolCount = 1;
             } else {
               nugolCount = 60;
             }
           }
 
-          // ★★★ [3. 최종 합산 수정] 추가 데미지(mechAdd)까지 포함 ★★★
-          // 기본 딜 + (추가 딜 * 횟수)
+          // ★★★ [NEW] 저금통 입금 (이곳이 핵심입니다) ★★★
+          if (mechanicTransferDmg > 0) {
+            // 내 스킬트리용 입금 (이론상 횟수 곱하기)
+            holyFireAccumulated += mechanicTransferDmg * castsPerMin;
+            // 누골용 입금 (실전 횟수 곱하기)
+            holyFireNugolAccumulated += mechanicTransferDmg * nugolCount;
+          }
+
+          // ★ 내 딜 계산 (transfer는 남 줄 돈이니 제외, mechAdd는 내 돈이니 포함)
           const totalDmg =
             oneHitDmg * castsPerMin + (mechAdd || 0) * castsPerMin;
-
-          // 누골 딜에도 똑같이 적용
           const nugolTotalDmg =
             oneHitDmg * nugolCount + (mechAdd || 0) * nugolCount;
 
@@ -1363,6 +1372,26 @@ export default function App() {
             isStatus: true,
           });
       });
+
+      if (holyFireAccumulated > 0) {
+        // 리스트에서 '성화' 스킬 찾기
+        const target = myTreeList.find((item) => item.name === "성화");
+        if (target) {
+          target.rawDmg += holyFireAccumulated; // 실제 값 합산
+          target.damage = Math.floor(target.rawDmg); // 표기용 정수값 갱신
+          // (참고: totalOneMinSkillDmg 전역 변수는 이미 위에서 입금할 때 처리 안했으므로 여기서 더해줌)
+          totalOneMinSkillDmg += holyFireAccumulated;
+        }
+      }
+
+      // 2. 누골 리스트 처리
+      if (holyFireNugolAccumulated > 0) {
+        const targetNugol = nugolList.find((item) => item.name === "성화");
+        if (targetNugol) {
+          targetNugol.rawDmg += holyFireNugolAccumulated;
+          targetNugol.damage = Math.floor(targetNugol.rawDmg);
+        }
+      }
 
       // 정렬 (데미지 높은 순)
       myTreeList.sort((a, b) => b.rawDmg - a.rawDmg);
