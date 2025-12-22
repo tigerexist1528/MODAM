@@ -2822,8 +2822,6 @@ export default function App() {
           handleStatHover={handleStatHover}
           handleStatMove={handleStatMove}
           handleStatLeave={handleStatLeave}
-          activeSetEffects={activeSetEffects}
-          activeBuffs={activeBuffs}
         />
         <div style={{ height: "80px" }}></div>
         <footer
