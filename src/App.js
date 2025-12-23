@@ -1379,31 +1379,42 @@ export default function App() {
           // -----------------------------------------------------
           // 3. [POTENTIAL] 계수표 (Only Skill Spec)
           // -----------------------------------------------------
-          // - 내실, 장비 제외. TP 제외.
-          // - 오직 [만렙 기준 계수] * [이론상 횟수]
+          // - 내실, 장비, TP, 레벨링 보너스 모두 제외.
+          // - 오직 [스킬 자체 만렙 계수] * [이론상 횟수]
 
-          const maxPossibleLv = Math.min(skill.maxLv + bonusLv, skill.limitLv); // 보너스 레벨은 유지 (스킬 특성상)
+          // [수정 1] 장비 레벨링(bonusLv) 제거 -> 순수 만렙(maxLv) 사용
+          const pureMaxLv = skill.maxLv || skill.limitLv;
+
           const maxRate =
-            skill.baseDamageRate + skill.damageRateGrowth * (maxPossibleLv - 1);
+            skill.baseDamageRate + skill.damageRateGrowth * (pureMaxLv - 1);
           const maxFlat =
-            skill.baseFlatDamage + skill.flatDamageGrowth * (maxPossibleLv - 1);
+            skill.baseFlatDamage + skill.flatDamageGrowth * (pureMaxLv - 1);
 
-          // ★ 핵심: commonFactor 대신 potentialFactor(1.0에 가까움) 사용, TP 제외(1.0)
-          const potBaseDmg = mainAtkVal * (maxRate / 100) + maxFlat;
-          const potOneHitDmgRaw = potBaseDmg * 1.0 * potentialFactor * 1.0;
+          // [수정 2] 캐릭터 공격력 무시 -> 표준 공격력(10,000) 사용
+          // 이렇게 해야 장비빨 없이 스킬 간의 순수 계수(%) 차이를 볼 수 있습니다.
+          const STANDARD_ATK = 10000;
 
-          // 메커니즘 (Potential용 Context - TP, 증뎀 제거)
+          // [수정 3] 증뎀/TP 제거 -> 1.0
+          const potBaseDmg = STANDARD_ATK * (maxRate / 100) + maxFlat;
+          const potOneHitDmgRaw = potBaseDmg; // * 1.0(TP) * 1.0(증뎀)
+
+          // 메커니즘 Context도 '통제 변인' 적용
           const potContext = {
             ...mechContext,
-            commonFactor: potentialFactor,
-            tpMultiplier: 1.0,
-            specificSkillFactor: 1.0,
+            commonFactor: 1.0, // 장비 증뎀 제거
+            mainAtkVal: STANDARD_ATK, // 공격력 통일
+            tpMultiplier: 1.0, // TP 제거
+            specificSkillFactor: 1.0, // 룬/고유옵 제거
+            skillBonusLevels: {}, // 레벨링 제거
+            skillDmgMap: {},
+            skillIdDmgMap: {},
+            isPotentialMode: true, // ★ JobMechanics에 신호 보냄
           };
 
           const { finalDmg: potOneHitDmg, additionalDmg: potMechAdd } =
             applyJobMechanics(skill, userStats, potOneHitDmgRaw, potContext);
 
-          // 계수표는 "이론상 횟수(rawCount)"를 그대로 씁니다. (평타 제한도 안 둠, 순수 비교 목적)
+          // 계수표는 "이론상 횟수(rawCount)"를 그대로 씁니다.
           const potTotalDmg =
             potOneHitDmg * rawCount + (potMechAdd || 0) * rawCount;
 
@@ -1660,15 +1671,27 @@ export default function App() {
       };
 
       setFinalStats(uiStats);
+      // ★★★ [수정] 여기가 핵심입니다! 보따리를 더 크게 만듭니다. ★★★
       setFinalDamageInfo({
+        // 1. 메인 화면 표시용 (기존 데이터)
         normal: Math.floor(totalOneMinSkillDmg),
         status: Math.floor(totalStatusDmg),
         total: Math.floor(grandTotalOneMinDmg),
+
+        // 2. [NEW] 분석 페이지(SkillAnalysisPage)로 보낼 3가지 리스트
+        myTree: myTreeList, // 이론상 1분딜
+        nugol: nugolList, // 누골 실전딜
+        potential: potentialList, // 계수표 (장비 뗀 순수 스펙)
+
+        // 3. [NEW] 탭별 총 데미지
+        totalDmg: totalOneMinSkillDmg, // MY_TREE 총합
+        nugolTotalDmg: nugolList.reduce((acc, cur) => acc + cur.rawDmg, 0), // NUGOL 총합
       });
+
       setTotalGearPoint(nextStats.gearPoint || 0);
     }, 16);
     return () => clearTimeout(timer);
-  }, [userStats, activeSets, enemyLevel, uniqueEffectDb]);
+  }, [userStats, activeSets, enemyLevel, uniqueEffectDb]); // 의존성 배열 유지
 
   // 모달 열 때 버퍼 초기화 헬퍼
   const openSubModal = (subType, slot) => {

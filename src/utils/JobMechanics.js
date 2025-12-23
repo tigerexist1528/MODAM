@@ -68,16 +68,22 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
     const targetSkill = (allSkills || []).find((s) => s.id === targetId);
 
     if (targetSkill) {
-      // 1. 타겟의 [최종 레벨] 계산 (직접 찍은거 + 장비 보너스)
-      const learnedLv = userStats.skill.levels[targetId] || targetSkill.minLv;
-      const lvKey = `lv${targetSkill.startLv}`;
-      const bonusLv = (skillBonusLevels && skillBonusLevels[lvKey]) || 0;
+      // 1. 타겟의 [최종 레벨] 계산
+      let finalLv = 0;
 
-      // (limitLv 체크 포함)
-      const finalLv = Math.min(
-        learnedLv + bonusLv,
-        targetSkill.limitLv || targetSkill.maxLv + 10
-      );
+      // ★ [NEW] 잠재력(계수표) 모드일 경우 -> 무조건 만렙 기준!
+      if (context.isPotentialMode) {
+        finalLv = targetSkill.maxLv || targetSkill.limitLv;
+      } else {
+        // 실전 모드 -> 내 스킬트리 + 장비 레벨링 반영
+        const learnedLv = userStats.skill.levels[targetId] || targetSkill.minLv;
+        const lvKey = `lv${targetSkill.startLv}`;
+        const bonusLv = (skillBonusLevels && skillBonusLevels[lvKey]) || 0;
+        finalLv = Math.min(
+          learnedLv + bonusLv,
+          targetSkill.limitLv || targetSkill.maxLv + 10
+        );
+      }
 
       // 2. 타겟의 [기본 데미지] 계산 (최종 레벨 기준)
       const targetBaseDmg = getBaseDamage(targetSkill, finalLv, mainAtkVal);
@@ -108,30 +114,34 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
   // 예: 기본공격 사용 시 -> 양의공 데미지 발동
   if (mech && mech.type === "trigger_skill") {
     const targetId = mech.targetId;
-    const targetSkill = (allSkills || []).find(s => s.id === targetId);
+    const targetSkill = (allSkills || []).find((s) => s.id === targetId);
 
     if (targetSkill) {
       // 1. 타겟(양의공)의 스펙 가져오기
       const learnedLv = userStats.skill.levels[targetId] || targetSkill.minLv;
       const lvKey = `lv${targetSkill.startLv}`;
       const bonusLv = (skillBonusLevels && skillBonusLevels[lvKey]) || 0;
-      const finalLv = Math.min(learnedLv + bonusLv, targetSkill.limitLv || (targetSkill.maxLv + 10));
+      const finalLv = Math.min(
+        learnedLv + bonusLv,
+        targetSkill.limitLv || targetSkill.maxLv + 10
+      );
 
       // 2. 타겟 데미지 계산 (기본뎀 * TP * 특수증뎀 * 공통증뎀)
       const targetBaseDmg = getBaseDamage(targetSkill, finalLv, mainAtkVal);
       const targetTpMult = getTpMultiplier(targetSkill, userStats);
-      
+
       const levelFactor = (skillDmgMap && skillDmgMap[lvKey]) || 1.0;
       const idFactor = (skillIdDmgMap && skillIdDmgMap[targetId]) || 1.0;
       const targetSpecificFactor = levelFactor * idFactor;
 
-      const triggerDmg = targetBaseDmg * targetTpMult * targetSpecificFactor * commonFactor;
+      const triggerDmg =
+        targetBaseDmg * targetTpMult * targetSpecificFactor * commonFactor;
 
       // 3. 우편 배달 (Trigger)
       // 내 데미지(result.finalDmg)는 그대로 두고, 타겟 ID로 별도 배송
       result.mechanicTransferDmg = triggerDmg; // 1회분 데미지
-      result.transferTargetId = targetId;      // 양의공 ID
-      
+      result.transferTargetId = targetId; // 양의공 ID
+
       // 비율이 있다면 적용 (예: 50% 데미지로 발동)
       if (mech.ratio) result.mechanicTransferDmg *= mech.ratio;
 
@@ -146,7 +156,7 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
     result.finalDmg = 0; // 내 딜 삭제 (전송받은 딜만 App.js에서 합산됨)
     result.extraText = "트리거 전용";
   }
-  
+
   // =========================================================
   // [Specific] 이단심판관
   // =========================================================
