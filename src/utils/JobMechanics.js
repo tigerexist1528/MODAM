@@ -1,33 +1,28 @@
 // src/utils/JobMechanics.js
 
 /**
- * [헬퍼] TP 배율 계산기
+ * [헬퍼] TP 배율 계산기 (버그 수정됨)
  */
 const getTpMultiplier = (skill, userStats) => {
   if (!skill) return 1;
-  const tpLv = userStats.skill.levels[`TP_${skill.id}`] || 0;
+  // ★ [FIX] 기존 levels['TP_...'] -> tpLevels[id] 로 경로 수정!
+  const tpLv = userStats.skill.tpLevels[skill.id] || 0;
   if (tpLv === 0) return 1;
 
-  // DB 필드명 매핑 (대소문자/언더바 대응)
   const growth1 = skill.tpGrowth_1lv || skill.tpGrowth1Lv || 0;
   const growth = skill.tpGrowth || 0;
-
   return 1 + growth1 / 100 + (tpLv - 1) * (growth / 100);
 };
 
 /**
- * [헬퍼] 기본 데미지 계산기 (계수% + 고정뎀)
+ * [헬퍼] 기본 데미지 계산기 (레벨 보정 포함)
  */
 const getBaseDamage = (skill, level, mainAtkVal) => {
   if (!skill) return 0;
-
-  // 성장 계수 적용 (camelCase 확인)
   const finalRate =
     (skill.baseDamageRate || 0) + (skill.damageRateGrowth || 0) * (level - 1);
-
   const finalFlat =
     (skill.baseFlatDamage || 0) + (skill.flatDamageGrowth || 0) * (level - 1);
-
   return mainAtkVal * (finalRate / 100) + finalFlat;
 };
 
@@ -36,15 +31,18 @@ const getBaseDamage = (skill, level, mainAtkVal) => {
  */
 export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
   const { subJob } = userStats.character;
-  // ★ [핵심 수정] App.js에서 보내준 allSkills를 꺼냅니다.
+
+  // App.js에서 보내준 '완전 복사'용 재료들 해체
   const {
     commonFactor,
     mainAtkVal,
-    tpMultiplier: myTpMultiplier,
     allSkills,
+    // ▼ 타겟 스킬 계산용
+    skillBonusLevels,
+    skillDmgMap,
+    skillIdDmgMap,
   } = context;
 
-  // 결과값 초기화
   let result = {
     finalDmg: currentDmg,
     additionalDmg: 0,
@@ -53,7 +51,6 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
     extraText: null,
   };
 
-  // mechanics 데이터 파싱
   let mech = skill.mechanics;
   if (typeof mech === "string") {
     try {
@@ -64,50 +61,51 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
   }
 
   // =========================================================
-  // [Global] 범용 메커니즘
+  // [Global] 범용 메커니즘 : 데미지 복사 (Copy Damage)
   // =========================================================
-
-  // Type 1: 데미지 복사 (Copy Damage)
   if (mech && mech.type === "copy_damage") {
     const targetId = mech.targetId;
-
-    // ★ [핵심 수정] import한 빈 DB가 아니라, context로 받은 꽉 찬 DB에서 찾습니다.
     const targetSkill = (allSkills || []).find((s) => s.id === targetId);
 
     if (targetSkill) {
-      // 1. 원본 스킬의 현재 레벨 (없으면 최소레벨)
-      const targetLv = userStats.skill.levels[targetId] || targetSkill.minLv;
+      // 1. 타겟의 [최종 레벨] 계산 (직접 찍은거 + 장비 보너스)
+      const learnedLv = userStats.skill.levels[targetId] || targetSkill.minLv;
+      const lvKey = `lv${targetSkill.startLv}`;
+      const bonusLv = (skillBonusLevels && skillBonusLevels[lvKey]) || 0;
 
-      // 2. 원본 스킬의 기본 1타 데미지 계산
-      const targetBaseDmg = getBaseDamage(targetSkill, targetLv, mainAtkVal);
+      // (limitLv 체크 포함)
+      const finalLv = Math.min(
+        learnedLv + bonusLv,
+        targetSkill.limitLv || targetSkill.maxLv + 10
+      );
 
-      // 3. 원본 스킬의 TP 배율 가져오기
+      // 2. 타겟의 [기본 데미지] 계산 (최종 레벨 기준)
+      const targetBaseDmg = getBaseDamage(targetSkill, finalLv, mainAtkVal);
+
+      // 3. 타겟의 [TP 배율] 계산 (★ 버그 수정됨)
       const targetTpMult = getTpMultiplier(targetSkill, userStats);
 
-      // 4. 최종 데미지 교체 (내 TP 무시, 공통 계수 적용)
-      result.finalDmg = targetBaseDmg * targetTpMult * commonFactor;
+      // 4. 타겟의 [특수 증뎀] 계산 (룬, 고유옵션 등)
+      // 레벨 구간 증뎀(skillDmgMap) * ID 지정 증뎀(skillIdDmgMap)
+      const levelFactor = (skillDmgMap && skillDmgMap[lvKey]) || 1.0;
+      const idFactor = (skillIdDmgMap && skillIdDmgMap[targetId]) || 1.0;
+      const targetSpecificFactor = levelFactor * idFactor;
 
-      // 5. 비율 조정 (옵션)
-      if (mech.ratio) {
-        result.finalDmg *= mech.ratio;
-      }
+      // 5. 최종 데미지 산출 (모든 계수 곱연산)
+      // [기본뎀 * TP * 특수증뎀 * 공통증뎀]
+      result.finalDmg =
+        targetBaseDmg * targetTpMult * targetSpecificFactor * commonFactor;
 
-      result.extraText = `[${targetSkill.name} Lv.${targetLv}] 복사`;
+      if (mech.ratio) result.finalDmg *= mech.ratio;
+      result.extraText = `[${targetSkill.name} Lv.${finalLv}] 복사`;
     } else {
-      // 타겟 스킬을 못 찾았을 경우
       result.finalDmg = 0;
       result.extraText = `Err: 타겟(${targetId}) 없음`;
-
-      // 디버깅용 로그 (개발자 도구 콘솔에서 확인 가능)
-      console.warn(
-        `[JobMechanics] 타겟 스킬을 찾을 수 없습니다: ${targetId}`,
-        allSkills
-      );
     }
   }
 
   // =========================================================
-  // [Specific] 직업별 전용 로직
+  // [Specific] 이단심판관
   // =========================================================
   if (subJob === "이단심판관") {
     // 성화 (Holy Fire)
@@ -118,7 +116,7 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
 
     if (holyFireLv > 0 && isJobSkill) {
       const bonusRate = 8 + (holyFireLv - 1);
-      // 복사된 데미지(result.finalDmg) 기준으로 성화 데미지 계산
+      // 복사된 데미지(result.finalDmg) 기준으로 성화 추가타 계산
       const bonusDmg = result.finalDmg * (bonusRate / 100);
 
       result.mechanicTransferDmg = bonusDmg;

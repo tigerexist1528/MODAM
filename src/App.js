@@ -156,7 +156,8 @@ export default function App() {
 
   // Result States
   const [statDetailModal, setStatDetailModal] = useState(null);
-  const [finalStats, setFinalStats] = useState({});
+  const [finalStats, setFinalStats] = useState(initialState.stats || {});
+
   const [finalDamageInfo, setFinalDamageInfo] = useState({
     normal: 0,
     status: 0,
@@ -1175,13 +1176,18 @@ export default function App() {
           const rawOneHitDmg =
             skillBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
 
-          // ★ Context 포장하기
+          // ★ Context 포장하기 (완벽한 복사를 위해 재료 추가)
           const mechContext = {
             allSkills: SKILL_DB,
             commonFactor,
             mainAtkVal,
-            tpMultiplier,
-            specificSkillFactor,
+            tpMultiplier, // (내 스킬 TP)
+            specificSkillFactor, // (내 스킬 룬/레벨링)
+
+            // ▼ [NEW] 타겟 스킬 계산용 데이터들
+            skillBonusLevels: nextStats.skill.lv, // 장비로 오른 레벨 (+Lv)
+            skillDmgMap: specificSkillMultipliers, // 레벨 구간별 증뎀 (룬 등)
+            skillIdDmgMap: specificSkillIdMultipliers, // ID 지정 증뎀 (고유옵 등)
           };
 
           // ★ 어댑터 호출 (mechanicTransferDmg 받아오기)
@@ -1193,28 +1199,50 @@ export default function App() {
             extraText,
           } = applyJobMechanics(skill, userStats, rawOneHitDmg, mechContext);
 
-          // 횟수 계산 (기존 코드 유지)
+          // =========================================================
+          // ★★★ [FIX] 실전성을 고려한 횟수 계산 로직 (수정됨) ★★★
+          // =========================================================
           let cooldown = skill.cooltime;
           let realCooldown = cooldown * (1 - finalCdrPct / 100);
 
-          // (A) 이론상 횟수
+          // [1] 최소 동작 시간 (Human Delay) 정의
+          // 쿨타임이 아무리 짧아도 스킬 시전 모션 때문에 최소 0.7~0.8초는 소요됩니다.
+          // 공용 스킬(common)은 주력기가 아니므로 패널티를 더 줍니다(1.5초).
+          let minActionTime = 0.75;
+          if (skill.category === "common") minActionTime = 2.0; // 휘둘러치기 등 견제
+          if (skill.category === "basic") minActionTime = 1.0; // 기본기
+
+          // 실제 1회 사이클 시간 = 쿨타임과 최소동작시간 중 큰 값
+          const effectiveCycleTime = Math.max(realCooldown, minActionTime);
+
+          // (A) 이론상 횟수 (DPS용)
           let castsPerMin = 0;
-          if (skill.type === "onhit") castsPerMin = 15;
+          if (skill.type === "onhit") castsPerMin = 15; // 패시브/평타류 고정
           else {
-            if (realCooldown > 0) castsPerMin = 60 / realCooldown;
+            // 0초 쿨타임 방지 및 애니메이션 시간 반영
+            if (effectiveCycleTime > 0) castsPerMin = 60 / effectiveCycleTime;
             else castsPerMin = 1;
           }
 
-          // (B) 누골 실전 횟수
+          // (B) 누골 실전 횟수 (정수, 쿨타임 딱 맞춰 못 쓰는 현실 반영)
           let nugolCount = 0;
           if (skill.type === "onhit") nugolCount = 15;
           else {
-            if (realCooldown > 0) {
-              if (realCooldown < 60)
-                nugolCount += 1; // 1분 전 첫 발동 + 쿨타임마다
-              else nugolCount = 1;
+            // 누골 횟수도 'effectiveCycleTime'을 기준으로 계산
+            if (effectiveCycleTime > 0) {
+              // 60초 안에 몇 번 들어가는지 (첫타 0초 발동 가정)
+              // 예: 쿨 40초 -> 0초, 40초 (2회)
+              // 예: 쿨 0.5초(보정 0.8초) -> 60/0.8 = 75회
+              if (effectiveCycleTime < 60) {
+                nugolCount = Math.floor(60 / effectiveCycleTime);
+                // 딱 떨어지지 않고 시간이 남으면 1회 더 칠 가능성 있음 (취향 차이)
+                // 여기서는 보수적으로 floor 처리하거나 +1 할 수 있음
+                if (60 % effectiveCycleTime > 0.1) nugolCount += 1;
+              } else {
+                nugolCount = 1; // 60초 넘으면 1회
+              }
             } else {
-              nugolCount = 60;
+              nugolCount = 0;
             }
           }
 
@@ -2880,17 +2908,19 @@ export default function App() {
         </div>{" "}
         {/* 상단 섹션 끝 */}
         {/* ★ [New] 하단 종합 능력치 패널 */}
-        <BottomStatPanel
-          finalStats={finalStats}
-          totalGearPoint={totalGearPoint}
-          enemyLevel={enemyLevel}
-          userStats={userStats}
-          finalDamageInfo={finalDamageInfo}
-          setStatDetailModal={setStatDetailModal}
-          handleStatHover={handleStatHover}
-          handleStatMove={handleStatMove}
-          handleStatLeave={handleStatLeave}
-        />
+        {isDataLoaded && finalStats && Object.keys(finalStats).length > 0 && (
+          <BottomStatPanel
+            finalStats={finalStats}
+            totalGearPoint={totalGearPoint}
+            enemyLevel={enemyLevel}
+            userStats={userStats}
+            finalDamageInfo={finalDamageInfo}
+            setStatDetailModal={setStatDetailModal}
+            handleStatHover={handleStatHover}
+            handleStatMove={handleStatMove}
+            handleStatLeave={handleStatLeave}
+          />
+        )}
         <div style={{ height: "80px" }}></div>
         <footer
           style={{

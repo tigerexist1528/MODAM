@@ -318,7 +318,7 @@ export const loadGameData = async () => {
         // ★ [NEW] 파싱된 성장 데이터 저장
         statGrowth: growthMap,
         // ★★★ [NEW] 특수 메커니즘 데이터 탑승 완료! ★★★
-        mechanics: row.mechanics || null,
+        mechanics: row.mechanics || row.Mechanics || null,
       };
     });
 

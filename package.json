@@ -19,7 +19,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "postbuild": "node obfuscate.js",
+    "x-postbuild": "node obfuscate.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
