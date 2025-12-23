@@ -1172,14 +1172,14 @@ export default function App() {
       });
 
       // =========================================================
-      // [Logic Part 1] 시간 예산 계산 (MyTree & Nugol 공용)
+      // [Logic Part 1] 시간 예산 계산
       // =========================================================
       let myTreeVipTime = 0;
       let nugolVipTime = 0;
       const skillBuffer = [];
 
       classSkills.forEach((skill) => {
-        // ★ [안전장치] 변수 정의 (쿨타임 감소)
+        // 변수 정의
         const lvKey = `lv${skill.startLv}`;
         const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
         const finalCdrPct = Math.min(50, rawCdr);
@@ -1210,7 +1210,6 @@ export default function App() {
         } else {
           mech = skill.mechanics;
         }
-        // 양의공 같은 패시브 데미지인지 확인
         const isPassiveDmg = mech && mech.type === "passive_damage";
 
         // [MyTree] 이론상 사이클
@@ -1218,14 +1217,12 @@ export default function App() {
         let rawCount = 0;
 
         if (skill.type === "onhit") {
-          // 패시브 데미지(양의공)는 스스로 발동 0회
           if (isPassiveDmg) rawCount = 0;
-          else rawCount = 18;
+          else rawCount = 15; // ★ [복구] 다시 15회로 원상복구
         } else if (effectiveCycle > 0) rawCount = 60 / effectiveCycle;
 
         // [Nugol] 실전 정수 사이클 (VIP용)
         let vipNugolCount = 0;
-        // 패시브 데미지는 시간 예산 먹지 않음
         if (priority >= 50 && skill.type !== "onhit" && !isPassiveDmg) {
           let currentTime = 0;
           while (currentTime + actionTime <= 60) {
@@ -1271,10 +1268,9 @@ export default function App() {
           isPassiveDmg,
         } = data;
 
-        // ★ [안전장치] 변수 재정의 (ReferenceError 방지)
         const lvKey = `lv${skill.startLv}`;
         const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
-        const finalCdrPct = Math.min(50, rawCdr); // 여기서도 정의해줍니다.
+        const finalCdrPct = Math.min(50, rawCdr);
 
         // -----------------------------------------------------
         // 1. [MY_TREE] & 2. [NUGOL] 동시 계산
@@ -1282,7 +1278,6 @@ export default function App() {
         let myTreeCount = rawCount;
         let nugolCount = vipNugolCount;
 
-        // Filler 스킬 처리
         if (skill.type !== "onhit" && !isPassiveDmg && priority < 50) {
           // [MyTree]
           const maxFillerCount = myTreeRemainingTime / actionTime;
@@ -1290,17 +1285,20 @@ export default function App() {
 
           // [Nugol]
           const maxNugolFiller = Math.floor(nugolRemainingTime / actionTime);
-          // 쿨타임 제한 (이론상 최대치)
           const effectiveCycle = Math.max(realCooldown, actionTime);
           const cooldownLimit =
             effectiveCycle > 0 ? Math.floor(60 / effectiveCycle) : 999;
           nugolCount = Math.min(cooldownLimit, maxNugolFiller);
         }
 
-        // 양의공 등은 0회
         if (isPassiveDmg) {
           myTreeCount = 0;
           nugolCount = 0;
+        }
+
+        // ★ [복구] Nugol onhit 횟수 복구 (15회)
+        if (skill.type === "onhit" && !isPassiveDmg) {
+          nugolCount = 15;
         }
 
         // 데미지 계산
@@ -1424,7 +1422,7 @@ export default function App() {
             applyJobMechanics(skill, userStats, potOneHitDmgRaw, potContext);
 
           let potCount = rawCount;
-          if (isPassiveDmg) potCount = 1; // 계수표에선 1회 기준
+          if (isPassiveDmg) potCount = 1;
 
           const potTotalDmg =
             potOneHitDmg * potCount + (potMechAdd || 0) * potCount;
@@ -1441,10 +1439,11 @@ export default function App() {
         }
       });
 
-      // ---------------------------------------------------------
-      // [C] 후처리
-      // ---------------------------------------------------------
+      // =========================================================
+      // [C] 후처리 (우체통 수거)
+      // =========================================================
 
+      // 1. MyTree 우체통 털기
       Object.keys(dmgTransferMap).forEach((targetId) => {
         const target = myTreeList.find((item) => item.id === targetId);
         if (target) {
@@ -1454,6 +1453,7 @@ export default function App() {
         }
       });
 
+      // 2. Nugol 우체통 털기
       Object.keys(nugolTransferMap).forEach((targetId) => {
         const target = nugolList.find((item) => item.id === targetId);
         if (target) {
@@ -1461,10 +1461,6 @@ export default function App() {
           target.damage = Math.floor(target.rawDmg);
         }
       });
-
-      myTreeList.sort((a, b) => b.rawDmg - a.rawDmg);
-      nugolList.sort((a, b) => b.rawDmg - a.rawDmg);
-      potentialList.sort((a, b) => b.rawDmg - a.rawDmg);
 
       // -----------------------------------------------------------------
       // [Step 5] 상태이상 데미지 추가 및 최종 합산
@@ -1480,149 +1476,140 @@ export default function App() {
         shockInc,
       } = nextStats.status;
 
-      // 상태이상 로직 (기존 유지)
-      // 누골 모드에서도 상태이상은 "총 데미지 비율" 혹은 "별도 계산"이 필요하지만
-      // 여기서는 1분 평균치 비율을 그대로 누골 리스트에도 적용합니다.
-      const getStatusDmg = (rate, inc) =>
-        totalOneMinSkillDmg * (rate / 100) * (1 + inc / 100);
+      const calculateStatus = (baseDmg, rate, inc) =>
+        baseDmg * (rate / 100) * (1 + inc / 100);
 
-      const poisonTotal = getStatusDmg(poisonDmg, poisonInc);
-      const bleedTotal = getStatusDmg(bleedDmg, bleedInc);
-      const burnTotal = getStatusDmg(burnDmg, burnInc);
-      const shockTotal = getStatusDmg(shockDmg, shockInc);
+      // (1) MyTree 상태이상
+      const myTreePoison = calculateStatus(
+        totalOneMinSkillDmg,
+        poisonDmg,
+        poisonInc
+      );
+      const myTreeBleed = calculateStatus(
+        totalOneMinSkillDmg,
+        bleedDmg,
+        bleedInc
+      );
+      const myTreeBurn = calculateStatus(totalOneMinSkillDmg, burnDmg, burnInc);
+      const myTreeShock = calculateStatus(
+        totalOneMinSkillDmg,
+        shockDmg,
+        shockInc
+      );
 
-      const totalStatusDmg = poisonTotal + bleedTotal + burnTotal + shockTotal;
-      const grandTotalOneMinDmg = totalOneMinSkillDmg + totalStatusDmg;
+      const myTreeStatusTotal =
+        myTreePoison + myTreeBleed + myTreeBurn + myTreeShock;
+      const grandTotalOneMinDmg = totalOneMinSkillDmg + myTreeStatusTotal;
 
-      // 리스트에 상태이상 추가
-      [myTreeList, nugolList].forEach((list) => {
-        // 누골 리스트일 경우 상태이상 데미지도 누골 총합 비율에 맞춰 재계산 필요
-        // 간단하게 구현하기 위해 myTree 비율을 가져오되, 리스트 정렬 후 재계산 추천
-        // 여기서는 단순 추가 (수치는 myTree 기준 - 오차 감안)
-        if (poisonTotal > 0)
+      // (2) Nugol 상태이상
+      const nugolSkillSum = nugolList.reduce((acc, cur) => acc + cur.rawDmg, 0);
+      const nugolPoison = calculateStatus(nugolSkillSum, poisonDmg, poisonInc);
+      const nugolBleed = calculateStatus(nugolSkillSum, bleedDmg, bleedInc);
+      const nugolBurn = calculateStatus(nugolSkillSum, burnDmg, burnInc);
+      const nugolShock = calculateStatus(nugolSkillSum, shockDmg, shockInc);
+
+      const addStatusItems = (list, p, bl, bu, s) => {
+        if (p > 0)
           list.push({
             id: "st_poison",
-            name: "중독 데미지",
+            name: "중독",
             icon: "poison_icon",
-            damage: Math.floor(poisonTotal),
+            damage: Math.floor(p),
             count: "-",
-            rawDmg: poisonTotal,
+            rawDmg: p,
             isStatus: true,
           });
-        if (bleedTotal > 0)
+        if (bl > 0)
           list.push({
             id: "st_bleed",
-            name: "출혈 데미지",
+            name: "출혈",
             icon: "bleed_icon",
-            damage: Math.floor(bleedTotal),
+            damage: Math.floor(bl),
             count: "-",
-            rawDmg: bleedTotal,
+            rawDmg: bl,
             isStatus: true,
           });
-        if (burnTotal > 0)
+        if (bu > 0)
           list.push({
             id: "st_burn",
-            name: "화상 데미지",
+            name: "화상",
             icon: "burn_icon",
-            damage: Math.floor(burnTotal),
+            damage: Math.floor(bu),
             count: "-",
-            rawDmg: burnTotal,
+            rawDmg: bu,
             isStatus: true,
           });
-        if (shockTotal > 0)
+        if (s > 0)
           list.push({
             id: "st_shock",
-            name: "감전 데미지",
+            name: "감전",
             icon: "shock_icon",
-            damage: Math.floor(shockTotal),
+            damage: Math.floor(s),
             count: "-",
-            rawDmg: shockTotal,
+            rawDmg: s,
             isStatus: true,
           });
-      });
+      };
 
-      // ★★★ [FIX] 우체통 털기 (범용 로직) ★★★
-      // dmgTransferMap에 있는 모든 배달물을 주인에게 전달합니다.
-      Object.keys(dmgTransferMap).forEach((targetId) => {
-        // 1. 내 스킬트리 리스트에서 주인 찾기
-        const target = myTreeList.find((item) => item.id === targetId);
-        const amount = dmgTransferMap[targetId];
+      addStatusItems(
+        myTreeList,
+        myTreePoison,
+        myTreeBleed,
+        myTreeBurn,
+        myTreeShock
+      );
+      addStatusItems(nugolList, nugolPoison, nugolBleed, nugolBurn, nugolShock);
 
-        if (target && amount > 0) {
-          target.rawDmg += amount;
-          target.damage = Math.floor(target.rawDmg);
-          totalOneMinSkillDmg += amount; // 전역 합산도 잊지 말기
-        }
-      });
+      // ---------------------------------------------------------
+      // [D] 정렬 및 Top 18 처리
+      // ---------------------------------------------------------
 
-      // 2. 누골 리스트 배달
-      Object.keys(nugolTransferMap).forEach((targetId) => {
-        const target = nugolList.find((item) => item.id === targetId);
-        const amount = nugolTransferMap[targetId];
-
-        if (target && amount > 0) {
-          target.rawDmg += amount;
-          target.damage = Math.floor(target.rawDmg);
-        }
-      });
-
-      // 정렬 (데미지 높은 순)
+      // 정렬 (내림차순)
       myTreeList.sort((a, b) => b.rawDmg - a.rawDmg);
       nugolList.sort((a, b) => b.rawDmg - a.rawDmg);
       potentialList.sort((a, b) => b.rawDmg - a.rawDmg);
 
-      // 점유율 계산
-      myTreeList.forEach(
-        (item) =>
-          (item.share =
-            grandTotalOneMinDmg > 0
-              ? (item.rawDmg / grandTotalOneMinDmg) * 100
-              : 0)
-      );
+      // 점유율 (MyTree)
+      myTreeList.forEach((item) => {
+        item.share =
+          grandTotalOneMinDmg > 0
+            ? (item.rawDmg / grandTotalOneMinDmg) * 100
+            : 0;
+      });
 
-      // ★ [누골] Top 12 스킬 제한 적용 (현실성 반영)
-      // 상태이상 데미지는 "스킬"이 아니므로 Top 12 카운트에서 제외하고, 항상 포함시킴
-      // 스킬만 추출하여 상위 12개 합산 + 상태이상 합산
+      // ★ Nugol Top 18 로직
       const nugolSkillsOnly = nugolList.filter((i) => !i.isStatus);
       const nugolStatusOnly = nugolList.filter((i) => i.isStatus);
 
-      // 상위 12개 스킬만 유효 딜로 인정
-      const activeNugolSkills = nugolSkillsOnly.slice(0, 12);
-      const activeNugolSum = activeNugolSkills.reduce(
+      const top18Skills = nugolSkillsOnly.slice(0, 18);
+      const top18SkillSum = top18Skills.reduce(
         (acc, cur) => acc + cur.rawDmg,
         0
       );
-      const activeStatusSum = nugolStatusOnly.reduce(
+      const nugolStatusSum = nugolStatusOnly.reduce(
         (acc, cur) => acc + cur.rawDmg,
         0
       );
-      const nugolGrandTotal = activeNugolSum + activeStatusSum;
+
+      const nugolGrandTotal = top18SkillSum + nugolStatusSum;
 
       nugolList.forEach((item) => {
-        // Top 12에 못 든 스킬은 점유율 0 처리 혹은 전체 대비 비율
-        // 여기서는 전체 대비 비율로 하되, 합계는 Top 12 기준
         item.share =
           nugolGrandTotal > 0 ? (item.rawDmg / nugolGrandTotal) * 100 : 0;
-
-        // 시각적 구분을 위해 Top 12 밖의 스킬은 흐리게 표시하기 위한 플래그
-        if (!item.isStatus && !activeNugolSkills.includes(item))
+        if (!item.isStatus && !top18Skills.includes(item)) {
           item.isExcluded = true;
+        }
       });
 
-      // 데이터 저장
-      setAnalysisData({
-        myTree: myTreeList,
-        nugol: nugolList, // ★ 추가됨
-        potential: potentialList,
-        totalDmg: Math.floor(grandTotalOneMinDmg),
-        nugolTotalDmg: Math.floor(nugolGrandTotal), // ★ Top 12 합산 딜
-      });
-
-      // 기존 UI용 데이터 업데이트
+      // =========================================================
+      // [UI Data Update] ★★★ 파트너님이 찾아내신 필수 코드 복구 ★★★
+      // =========================================================
       const uiStats = {
-        // ... (이전 코드와 동일, 생략 없이 그대로 유지하세요) ...
+        // 기존 속성 유지
         ...nextStats,
         ...nextStats.status,
+
+        // Step 1~3에서 계산된 변수들 연결
         strBase: Math.floor(totalStrBase),
         intBase: Math.floor(totalIntBase),
         physAtkBase: Math.floor(totalPhysAtkBase),
@@ -1633,40 +1620,33 @@ export default function App() {
         int: Math.floor(finalInt),
         physAtk: Math.floor(finalPhysAtk),
         magAtk: Math.floor(finalMagAtk),
+
+        // 데미지 관련
         skillAtkInc: ((globalSkillAtkMultiplier - 1) * 100).toFixed(1),
         allTypeDmg: ((totalAllTypeDmgRatio - 1) * 100).toFixed(1),
         finalDmg: ((totalFinalDmgRatio - 1) * 100).toFixed(1),
+
         skill: {
           ...nextStats.skill,
           dmg: {
-            // (1) 기존 레벨별 스킬 공격력 (lv45 등)
+            // (1) 레벨별 스증
             ...Object.keys(specificSkillMultipliers).reduce((acc, key) => {
               acc[key] = (specificSkillMultipliers[key] - 1) * 100;
               return acc;
             }, {}),
 
-            // (2) ★ [NEW] 특정 스킬 공격력 & 툴팁 출처 연결
+            // (2) 특정 스킬 스증 & 툴팁
             ...Object.keys(specificSkillIdMultipliers).reduce((acc, id) => {
               const val = (specificSkillIdMultipliers[id] - 1) * 100;
-
-              // 0이 아닐 때만 표시 (음수 포함, 0.001 오차범위 고려)
               if (Math.abs(val) > 0.001) {
-                // ID로 스킬 이름 찾기
                 const s = SKILL_DB.find(
                   (skill) => String(skill.id) === String(id)
                 );
-                const name = s ? s.name : id; // 이름 없으면 ID라도 표시
-
-                // UI용 키 생성 (예: exact_체이서프레스)
-                // 이 키를 utils/data.js가 받아서 처리합니다.
+                const name = s ? s.name : id;
                 const uiKey = `exact_${name}`;
                 acc[uiKey] = val;
 
-                // ★ [툴팁 연결 핵심]
-                // 계산 엔진은 'skill_dmg_id_105'라는 키로 출처를 기록했습니다.
-                // UI는 'exact_체이서프레스'라는 키를 사용하므로, 출처 정보를 복사해줍니다.
                 const sourceKey = `skill_dmg_id_${id}`;
-
                 if (statSources[sourceKey]) {
                   statSources[uiKey] = statSources[sourceKey];
                 }
@@ -1678,28 +1658,24 @@ export default function App() {
         sources: statSources,
       };
 
-      setFinalStats(uiStats);
-      // ★★★ [수정] 여기가 핵심입니다! 보따리를 더 크게 만듭니다. ★★★
+      // 최종 저장
+      setFinalStats(uiStats); // ★ 이제 uiStats가 정의되었으므로 에러가 안 납니다!
+
       setFinalDamageInfo({
-        // 1. 메인 화면 표시용 (기존 데이터)
         normal: Math.floor(totalOneMinSkillDmg),
-        status: Math.floor(totalStatusDmg),
+        status: Math.floor(myTreeStatusTotal),
         total: Math.floor(grandTotalOneMinDmg),
-
-        // 2. [NEW] 분석 페이지(SkillAnalysisPage)로 보낼 3가지 리스트
-        myTree: myTreeList, // 이론상 1분딜
-        nugol: nugolList, // 누골 실전딜
-        potential: potentialList, // 계수표 (장비 뗀 순수 스펙)
-
-        // 3. [NEW] 탭별 총 데미지
-        totalDmg: totalOneMinSkillDmg, // MY_TREE 총합
-        nugolTotalDmg: nugolList.reduce((acc, cur) => acc + cur.rawDmg, 0), // NUGOL 총합
+        myTree: myTreeList,
+        nugol: nugolList,
+        potential: potentialList,
+        totalDmg: Math.floor(grandTotalOneMinDmg),
+        nugolTotalDmg: Math.floor(nugolGrandTotal),
       });
 
       setTotalGearPoint(nextStats.gearPoint || 0);
     }, 16);
     return () => clearTimeout(timer);
-  }, [userStats, activeSets, enemyLevel, uniqueEffectDb]); // 의존성 배열 유지
+  }, [userStats, activeSets, enemyLevel, uniqueEffectDb]);
 
   // 모달 열 때 버퍼 초기화 헬퍼
   const openSubModal = (subType, slot) => {
