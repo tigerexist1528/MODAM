@@ -1159,7 +1159,6 @@ export default function App() {
       // ---------------------------------------------------------
       // [B] 계수표용 팩터 (장비/내실 제외, 깡통 스펙) - POTENTIAL용
       // ---------------------------------------------------------
-      // 방어율은 적용하되, 아이템/스탯 증뎀은 모두 1.0으로 만듭니다.
       const potentialFactor = levelDefenseFactor;
 
       // 스킬 필터링
@@ -1176,16 +1175,16 @@ export default function App() {
       // =========================================================
       // [Logic Part 1] 시간 예산 계산 (평타 횟수 제한용)
       // =========================================================
-      // "이론상 1분딜"이라도 평타를 120번 칠 순 없으므로,
-      // 주력기가 사용한 시간을 제외한 '자투리 시간'을 먼저 계산합니다.
-
-      let timeUsedByVIP = 0; // 주력기가 쓴 시간
-      const skillBuffer = []; // 계산용 임시 저장소
+      let timeUsedByVIP = 0;
+      const skillBuffer = [];
 
       classSkills.forEach((skill) => {
         // 1. 기본 데이터 준비
         const lvKey = `lv${skill.startLv}`;
-        const specificCdrPct = Math.min(50, nextStats.skill.cdr?.[lvKey] || 0);
+
+        // ★ [FIX] 여기서 변수명을 통일했습니다. (specificCdrPct -> finalCdrPct)
+        const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
+        const finalCdrPct = Math.min(50, rawCdr); // 이제 finalCdrPct가 정의되었습니다!
 
         let cooldown = skill.cooltime;
         let realCooldown = cooldown * (1 - finalCdrPct / 100);
@@ -1195,7 +1194,7 @@ export default function App() {
           skill.category === "basic" || skill.category === "common" ? 0.8 : 1.0;
         const actionTime = skill.actionTime || defaultActionTime;
 
-        // 우선순위 (Priority) - 50 이상은 주력기(VIP), 미만은 짤짤이(Filler)
+        // 우선순위
         let defaultPriority = 50;
         if (skill.category === "normal" || skill.type === "active")
           defaultPriority = 100;
@@ -1203,16 +1202,14 @@ export default function App() {
         const priority =
           skill.priority !== undefined ? skill.priority : defaultPriority;
 
-        // 이론상 시전 가능 횟수 (10분 평균)
-        // ★ 중요: 여기서는 ActionTime 때문에 횟수가 줄지 않음 (겹쳐 쓰기 허용 - 이론값이니까)
-        // 단, 쿨타임 자체가 ActionTime보다 짧으면 그건 물리적으로 불가능하므로 보정
+        // 이론상 시전 가능 횟수
         const effectiveCycle = Math.max(realCooldown, actionTime);
 
         let rawCount = 0;
         if (skill.type === "onhit") rawCount = 15;
-        else if (effectiveCycle > 0) rawCount = 60 / effectiveCycle; // 소수점 허용 (1.5회 등)
+        else if (effectiveCycle > 0) rawCount = 60 / effectiveCycle;
 
-        // VIP 스킬이라면, 이 스킬이 잡아먹는 시간을 기록
+        // VIP 스킬 시간 계산
         if (priority >= 50 && skill.type !== "onhit") {
           timeUsedByVIP += rawCount * actionTime;
         }
@@ -1227,7 +1224,7 @@ export default function App() {
         });
       });
 
-      // 자투리 시간 (평타가 쓸 수 있는 시간)
+      // 자투리 시간
       let remainingTimeForFiller = Math.max(0, 60 - timeUsedByVIP);
 
       // =========================================================
@@ -1247,24 +1244,18 @@ export default function App() {
         // -----------------------------------------------------
         // 1. [MY_TREE] 이론상 1분딜
         // -----------------------------------------------------
-        // - 주력기: 이론상 횟수(rawCount) 그대로 사용 (10분 평균)
-        // - 평타/짤짤이: 남은 시간(remainingTimeForFiller) 내에서만 사용
-
         let myTreeCount = rawCount;
 
         if (skill.type !== "onhit" && priority < 50) {
-          // 짤짤이는 남은 시간만큼만 때릴 수 있음
           const maxFillerCount = remainingTimeForFiller / actionTime;
           myTreeCount = Math.min(rawCount, maxFillerCount);
         }
 
-        // 데미지 계산 (현재 스펙 적용)
-        // ... (기존 변수 준비) ...
+        // 데미지 계산
         const lvKey = `lv${skill.startLv}`;
         const learnedLv = userStats.skill.levels[skill.id] || skill.minLv;
 
         if (learnedLv > 0) {
-          // (1) 현재 레벨 스펙
           const bonusLv = nextStats.skill.lv[lvKey] || 0;
           const finalLv = Math.min(learnedLv + bonusLv, skill.limitLv);
 
@@ -1285,7 +1276,7 @@ export default function App() {
           }
           const tpMultiplier = 1 + tpBonusPct / 100;
 
-          // 특수 증뎀 (룬 등)
+          // 특수 증뎀
           const levelFactor = specificSkillMultipliers[lvKey] || 1.0;
           const idFactor = specificSkillIdMultipliers[skill.id] || 1.0;
           const specificSkillFactor = levelFactor * idFactor;
@@ -1295,7 +1286,7 @@ export default function App() {
           const myOneHitDmgRaw =
             myBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
 
-          // 메커니즘 적용 (MY_TREE)
+          // 메커니즘 적용
           const mechContext = {
             allSkills: SKILL_DB,
             commonFactor,
@@ -1314,12 +1305,10 @@ export default function App() {
             transferTargetId,
           } = applyJobMechanics(skill, userStats, myOneHitDmgRaw, mechContext);
 
-          // 합산
           const myTotalDmg =
             myOneHitDmg * myTreeCount + (myMechAdd || 0) * myTreeCount;
           totalOneMinSkillDmg += myTotalDmg;
 
-          // 우체통 (MY_TREE)
           if (mechanicTransferDmg > 0 && transferTargetId) {
             const transferAmt = mechanicTransferDmg * myTreeCount;
             dmgTransferMap[transferTargetId] =
@@ -1337,30 +1326,23 @@ export default function App() {
           });
 
           // -----------------------------------------------------
-          // 2. [NUGOL] 누골 실전 (60초 정수 카운트)
+          // 2. [NUGOL] 누골 실전
           // -----------------------------------------------------
-          // - 0초 발동 가정, 쿨타임마다 사용.
-          // - 단, 60초 시점에 시전 시간이 넘어가면 횟수 인정 X
-
           let nugolCount = 0;
           if (skill.type === "onhit") {
             nugolCount = 15;
           } else {
-            // 타임라인 시뮬레이션
             let currentTime = 0;
             while (currentTime + actionTime <= 60) {
-              // 시전 끝나는 시간이 60초 이내여야 함
               nugolCount++;
-              currentTime += Math.max(realCooldown, actionTime); // 쿨타임과 시전시간 중 큰 값만큼 흐름
+              currentTime += Math.max(realCooldown, actionTime);
             }
-            // 최소 1회 보장 (쿨타임이 60초 넘어도 한번은 씀)
             if (nugolCount === 0 && realCooldown > 0) nugolCount = 1;
           }
 
           const nugolTotalDmg =
             myOneHitDmg * nugolCount + (myMechAdd || 0) * nugolCount;
 
-          // 우체통 (NUGOL)
           if (mechanicTransferDmg > 0 && transferTargetId) {
             const transferAmt = mechanicTransferDmg * nugolCount;
             nugolTransferMap[transferTargetId] =
@@ -1377,12 +1359,8 @@ export default function App() {
           });
 
           // -----------------------------------------------------
-          // 3. [POTENTIAL] 계수표 (Only Skill Spec)
+          // 3. [POTENTIAL] 계수표
           // -----------------------------------------------------
-          // - 내실, 장비, TP, 레벨링 보너스 모두 제외.
-          // - 오직 [스킬 자체 만렙 계수] * [이론상 횟수]
-
-          // [수정 1] 장비 레벨링(bonusLv) 제거 -> 순수 만렙(maxLv) 사용
           const pureMaxLv = skill.maxLv || skill.limitLv;
 
           const maxRate =
@@ -1390,31 +1368,25 @@ export default function App() {
           const maxFlat =
             skill.baseFlatDamage + skill.flatDamageGrowth * (pureMaxLv - 1);
 
-          // [수정 2] 캐릭터 공격력 무시 -> 표준 공격력(10,000) 사용
-          // 이렇게 해야 장비빨 없이 스킬 간의 순수 계수(%) 차이를 볼 수 있습니다.
           const STANDARD_ATK = 10000;
-
-          // [수정 3] 증뎀/TP 제거 -> 1.0
           const potBaseDmg = STANDARD_ATK * (maxRate / 100) + maxFlat;
-          const potOneHitDmgRaw = potBaseDmg; // * 1.0(TP) * 1.0(증뎀)
+          const potOneHitDmgRaw = potBaseDmg;
 
-          // 메커니즘 Context도 '통제 변인' 적용
           const potContext = {
             ...mechContext,
-            commonFactor: 1.0, // 장비 증뎀 제거
-            mainAtkVal: STANDARD_ATK, // 공격력 통일
-            tpMultiplier: 1.0, // TP 제거
-            specificSkillFactor: 1.0, // 룬/고유옵 제거
-            skillBonusLevels: {}, // 레벨링 제거
+            commonFactor: 1.0,
+            mainAtkVal: STANDARD_ATK,
+            tpMultiplier: 1.0,
+            specificSkillFactor: 1.0,
+            skillBonusLevels: {},
             skillDmgMap: {},
             skillIdDmgMap: {},
-            isPotentialMode: true, // ★ JobMechanics에 신호 보냄
+            isPotentialMode: true,
           };
 
           const { finalDmg: potOneHitDmg, additionalDmg: potMechAdd } =
             applyJobMechanics(skill, userStats, potOneHitDmgRaw, potContext);
 
-          // 계수표는 "이론상 횟수(rawCount)"를 그대로 씁니다.
           const potTotalDmg =
             potOneHitDmg * rawCount + (potMechAdd || 0) * rawCount;
 
@@ -1431,10 +1403,9 @@ export default function App() {
       });
 
       // ---------------------------------------------------------
-      // [C] 후처리 (우체통 털기 & 정렬)
+      // [C] 후처리
       // ---------------------------------------------------------
 
-      // 1. MY_TREE 우체통 처리
       Object.keys(dmgTransferMap).forEach((targetId) => {
         const target = myTreeList.find((item) => item.id === targetId);
         if (target) {
@@ -1444,7 +1415,6 @@ export default function App() {
         }
       });
 
-      // 2. NUGOL 우체통 처리
       Object.keys(nugolTransferMap).forEach((targetId) => {
         const target = nugolList.find((item) => item.id === targetId);
         if (target) {
@@ -1453,7 +1423,6 @@ export default function App() {
         }
       });
 
-      // 3. 정렬 (데미지 내림차순)
       myTreeList.sort((a, b) => b.rawDmg - a.rawDmg);
       nugolList.sort((a, b) => b.rawDmg - a.rawDmg);
       potentialList.sort((a, b) => b.rawDmg - a.rawDmg);
