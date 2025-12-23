@@ -150,11 +150,17 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
     }
   }
 
-  // ★ [NEW] Type 3: 패시브 데미지 (스스로 딜 안 함)
-  // 양의공처럼 남이 발동시켜주는 스킬은, 자기 차례가 왔을 때 0딜이어야 함
+  // ★ [NEW] Type 3: 패시브 데미지 (양의공 등)
   if (mech && mech.type === "passive_damage") {
-    result.finalDmg = 0; // 내 딜 삭제 (전송받은 딜만 App.js에서 합산됨)
-    result.extraText = "트리거 전용";
+    // [계수표 모드] 일 때는 '1회 발동 데미지'를 보여줘야 하므로 0으로 만들지 않음
+    if (context.isPotentialMode) {
+      // 계수표에서는 그냥 놔두면 rawOneHitDmg가 그대로 나갑니다. (성공)
+      result.extraText = "[계수] 1회 발동 기준";
+    } else {
+      // [실전 모드] 에서는 스스로 발동하면 안 됨 (Trigger가 배달해줌)
+      result.finalDmg = 0;
+      result.extraText = "트리거 전용 (자동 발동 X)";
+    }
   }
 
   // =========================================================
