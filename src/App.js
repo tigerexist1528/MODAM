@@ -1501,7 +1501,7 @@ export default function App() {
         myTreePoison + myTreeBleed + myTreeBurn + myTreeShock;
       const grandTotalOneMinDmg = totalOneMinSkillDmg + myTreeStatusTotal;
 
-      // (2) Nugol 상태이상
+      // (2) Nugol 상태이상 (순수 스킬 합산 기준)
       const nugolSkillSum = nugolList.reduce((acc, cur) => acc + cur.rawDmg, 0);
       const nugolPoison = calculateStatus(nugolSkillSum, poisonDmg, poisonInc);
       const nugolBleed = calculateStatus(nugolSkillSum, bleedDmg, bleedInc);
@@ -1596,20 +1596,20 @@ export default function App() {
       nugolList.forEach((item) => {
         item.share =
           nugolGrandTotal > 0 ? (item.rawDmg / nugolGrandTotal) * 100 : 0;
+        // Top 18 밖의 스킬은 흐리게 (상태이상은 항상 포함)
         if (!item.isStatus && !top18Skills.includes(item)) {
           item.isExcluded = true;
         }
       });
 
       // =========================================================
-      // [UI Data Update] ★★★ 파트너님이 찾아내신 필수 코드 복구 ★★★
+      // [UI Data Update] ★ 왼쪽 스탯 패널용 데이터 ★
       // =========================================================
       const uiStats = {
-        // 기존 속성 유지
         ...nextStats,
         ...nextStats.status,
 
-        // Step 1~3에서 계산된 변수들 연결
+        // Step 1~3 변수 연결
         strBase: Math.floor(totalStrBase),
         intBase: Math.floor(totalIntBase),
         physAtkBase: Math.floor(totalPhysAtkBase),
@@ -1621,7 +1621,6 @@ export default function App() {
         physAtk: Math.floor(finalPhysAtk),
         magAtk: Math.floor(finalMagAtk),
 
-        // 데미지 관련
         skillAtkInc: ((globalSkillAtkMultiplier - 1) * 100).toFixed(1),
         allTypeDmg: ((totalAllTypeDmgRatio - 1) * 100).toFixed(1),
         finalDmg: ((totalFinalDmgRatio - 1) * 100).toFixed(1),
@@ -1629,13 +1628,11 @@ export default function App() {
         skill: {
           ...nextStats.skill,
           dmg: {
-            // (1) 레벨별 스증
             ...Object.keys(specificSkillMultipliers).reduce((acc, key) => {
               acc[key] = (specificSkillMultipliers[key] - 1) * 100;
               return acc;
             }, {}),
 
-            // (2) 특정 스킬 스증 & 툴팁
             ...Object.keys(specificSkillIdMultipliers).reduce((acc, id) => {
               const val = (specificSkillIdMultipliers[id] - 1) * 100;
               if (Math.abs(val) > 0.001) {
@@ -1658,8 +1655,8 @@ export default function App() {
         sources: statSources,
       };
 
-      // 최종 저장
-      setFinalStats(uiStats); // ★ 이제 uiStats가 정의되었으므로 에러가 안 납니다!
+      // 최종 저장 (State Update)
+      setFinalStats(uiStats);
 
       setFinalDamageInfo({
         normal: Math.floor(totalOneMinSkillDmg),
@@ -1669,7 +1666,7 @@ export default function App() {
         nugol: nugolList,
         potential: potentialList,
         totalDmg: Math.floor(grandTotalOneMinDmg),
-        nugolTotalDmg: Math.floor(nugolGrandTotal),
+        nugolTotalDmg: Math.floor(nugolGrandTotal), // Top 18 + 상태이상 합계
       });
 
       setTotalGearPoint(nextStats.gearPoint || 0);
