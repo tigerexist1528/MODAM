@@ -285,17 +285,19 @@ export const loadGameData = async () => {
         tpCost: Number(row.tpCost || row.tp_cost || 0),
         cooltime: Number(row.cooltime || 0),
 
-        // 1. 시전 시간 (없으면 undefined -> App.js 기본값 사용)
+        // 1. 시전 시간
         actionTime:
           row.actionTime || row.action_time
             ? Number(row.actionTime || row.action_time)
             : undefined,
 
-        // 2. 우선순위 (0도 의미있는 값이므로, 빈 값일 때만 undefined 처리)
+        // 2. 우선순위 (가장 중요!)
+        // 값이 있고(null 아님), 빈 문자열("")이 아닐 때만 숫자로 변환
+        // 그렇지 않으면 undefined를 넘겨서 App.js가 기본값(100)을 쓰게 유도
         priority:
           row.priority !== undefined &&
           row.priority !== null &&
-          row.priority !== ""
+          String(row.priority).trim() !== ""
             ? Number(row.priority)
             : undefined,
 
