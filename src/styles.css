@@ -4991,3 +4991,41 @@ body.light-mode .class-name-overlay {
   color: #111 !important;
   text-shadow: none !important;
 }
+
+/* ==========================================================================
+   [UX Polish] 앱(App) 같은 사용감 만들기 (드래그/선택 방지)
+   ========================================================================== */
+
+/* 1. 사이트 전역에서 텍스트 드래그(파란 박스) 방지 */
+body {
+  -webkit-user-select: none; /* Chrome, Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE/Edge */
+  user-select: none; /* Standard */
+
+  /* 모바일에서 꾹 눌렀을 때 돋보기나 메뉴 뜨는 것 방지 (선택 사항) */
+  -webkit-touch-callout: none;
+}
+
+/* 2. 단, 입력창(Input, Textarea)은 글씨를 써야 하므로 선택 허용 (필수!) */
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+  cursor: text; /* 마우스 커서도 텍스트 입력 모양으로 유지 */
+}
+
+/* 3. 이미지 드래그(고스트 이미지 따라오는 것) 방지 */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+
+  /* 중요: 드래그는 막지만 클릭은 통과시켜야 휠 클릭/좌클릭이 작동함 */
+  pointer-events: auto;
+}

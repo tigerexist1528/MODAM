@@ -104,6 +104,49 @@ export const applyJobMechanics = (skill, userStats, currentDmg, context) => {
     }
   }
 
+  // ★ [NEW] Type 2: 트리거 스킬 (Trigger Skill)
+  // 예: 기본공격 사용 시 -> 양의공 데미지 발동
+  if (mech && mech.type === "trigger_skill") {
+    const targetId = mech.targetId;
+    const targetSkill = (allSkills || []).find(s => s.id === targetId);
+
+    if (targetSkill) {
+      // 1. 타겟(양의공)의 스펙 가져오기
+      const learnedLv = userStats.skill.levels[targetId] || targetSkill.minLv;
+      const lvKey = `lv${targetSkill.startLv}`;
+      const bonusLv = (skillBonusLevels && skillBonusLevels[lvKey]) || 0;
+      const finalLv = Math.min(learnedLv + bonusLv, targetSkill.limitLv || (targetSkill.maxLv + 10));
+
+      // 2. 타겟 데미지 계산 (기본뎀 * TP * 특수증뎀 * 공통증뎀)
+      const targetBaseDmg = getBaseDamage(targetSkill, finalLv, mainAtkVal);
+      const targetTpMult = getTpMultiplier(targetSkill, userStats);
+      
+      const levelFactor = (skillDmgMap && skillDmgMap[lvKey]) || 1.0;
+      const idFactor = (skillIdDmgMap && skillIdDmgMap[targetId]) || 1.0;
+      const targetSpecificFactor = levelFactor * idFactor;
+
+      const triggerDmg = targetBaseDmg * targetTpMult * targetSpecificFactor * commonFactor;
+
+      // 3. 우편 배달 (Trigger)
+      // 내 데미지(result.finalDmg)는 그대로 두고, 타겟 ID로 별도 배송
+      result.mechanicTransferDmg = triggerDmg; // 1회분 데미지
+      result.transferTargetId = targetId;      // 양의공 ID
+      
+      // 비율이 있다면 적용 (예: 50% 데미지로 발동)
+      if (mech.ratio) result.mechanicTransferDmg *= mech.ratio;
+
+      // 텍스트 표시
+      result.extraText = `[${targetSkill.name}] 발동`;
+    }
+  }
+
+  // ★ [NEW] Type 3: 패시브 데미지 (스스로 딜 안 함)
+  // 양의공처럼 남이 발동시켜주는 스킬은, 자기 차례가 왔을 때 0딜이어야 함
+  if (mech && mech.type === "passive_damage") {
+    result.finalDmg = 0; // 내 딜 삭제 (전송받은 딜만 App.js에서 합산됨)
+    result.extraText = "트리거 전용";
+  }
+  
   // =========================================================
   // [Specific] 이단심판관
   // =========================================================

@@ -81,6 +81,7 @@ import { useImagePreloader } from "./hooks/useImagePreloader";
 import { useTooltipControl } from "./hooks/useTooltipControl";
 import { usePresetManager } from "./hooks/usePresetManager";
 import { useUrlNavigation } from "./hooks/useUrlNavigation";
+import { useSiteProtection } from "./hooks/useSiteProtection";
 // minigame
 import PolishingGame from "./components/MiniGame/PolishingGame";
 
@@ -318,6 +319,9 @@ export default function App() {
 
   // 2. 툴팁 제어 로직 (state를 넘겨줘야 함)
   useTooltipControl(tooltipData, setTooltipData);
+
+  // ★ [NEW] 사이트 보안 가동 (우클릭 제어)
+  useSiteProtection();
 
   // -----------------------------------------------------------------
   // [3] Calculation Engine (소스 추적 기능 완벽 통합 Ver)
@@ -932,12 +936,33 @@ export default function App() {
       });
 
       mySkills.forEach((skill) => {
-        // 1. 내가 직접 찍은 레벨 (SP 투자)
+        // 1. 내가 직접 찍은 레벨
         const learnedLv = userStats.skill.levels[skill.id] || skill.minLv;
 
-        // ★ 버프 타입이면서 스탯을 가진 스킬만 계산
-        // (패시브여도 type이 buff로 되어있으면 여기서 처리됨)
-        if (skill.type === "buff" && skill.stats && learnedLv > 0) {
+        // ★ [NEW] 조건부 버프 체크 (광검 사용 가능 등)
+        let isConditionMet = true;
+        
+        // mechanics 파싱
+        let mech = skill.mechanics;
+        if (typeof mech === 'string') {
+          try { mech = JSON.parse(mech); } catch (e) { mech = null; }
+        }
+
+        // 조건: 무기 제한 (condition_weapon)
+        if (mech && mech.type === 'condition_weapon') {
+          // 현재 착용한 무기 정보 가져오기
+          const weaponId = userStats.equipment?.무기?.itemId;
+          const weaponItem = WEAPON_DB.find(w => w.id === weaponId);
+          
+          // 무기가 없거나, 타입이 다르면 조건 불만족
+          // (DB의 type이나 subType 컬럼을 확인해야 함. 여기서는 item.type 사용 가정)
+          if (!weaponItem || !weaponItem.type.includes(mech.value)) {
+            isConditionMet = false;
+          }
+        }
+
+        // ★ 버프 타입이면서 스탯을 가진 스킬만 계산 + 조건 만족 시
+        if (skill.type === "buff" && skill.stats && learnedLv > 0 && isConditionMet) {
           // 2. 아이템/아바타 등으로 올라간 보너스 레벨 가져오기
           // (Step 1에서 합산된 nextStats.skill.lv 데이터를 사용)
           const lvKey = `lv${skill.startLv}`;
