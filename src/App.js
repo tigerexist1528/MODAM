@@ -295,6 +295,11 @@ export default function App() {
   const handleGearUpdate = (slot, newItemId) => {
     setUserStats((prev) => {
       const next = { ...prev };
+
+      // ★ [FIX] 방어 코드: 각 객체가 없으면 빈 방이라도 만들어줍니다.
+      if (!next.equipment) next.equipment = {};
+      if (!next.uniqueEffects) next.uniqueEffects = {};
+
       const db = slot === "무기" ? WEAPON_DB : GEAR_DB;
       const item = db.find((i) => i.id === Number(newItemId));
 
@@ -303,11 +308,13 @@ export default function App() {
         setName: item ? item.setName : "선택 안함",
         grade: item ? item.grade : "일반",
       };
+
       // 익시드 부위 해제 시 고유옵션 초기화
       if (
         EXCEED_SLOTS.includes(slot) &&
         (!item || !item.grade.includes("익시드"))
       ) {
+        // 이제 next.uniqueEffects가 반드시 존재하므로 안전합니다.
         next.uniqueEffects[slot] = "선택 안함";
       }
       return next;
@@ -941,19 +948,23 @@ export default function App() {
 
         // ★ [NEW] 조건부 버프 체크 (광검 사용 가능 등)
         let isConditionMet = true;
-        
+
         // mechanics 파싱
         let mech = skill.mechanics;
-        if (typeof mech === 'string') {
-          try { mech = JSON.parse(mech); } catch (e) { mech = null; }
+        if (typeof mech === "string") {
+          try {
+            mech = JSON.parse(mech);
+          } catch (e) {
+            mech = null;
+          }
         }
 
         // 조건: 무기 제한 (condition_weapon)
-        if (mech && mech.type === 'condition_weapon') {
+        if (mech && mech.type === "condition_weapon") {
           // 현재 착용한 무기 정보 가져오기
           const weaponId = userStats.equipment?.무기?.itemId;
-          const weaponItem = WEAPON_DB.find(w => w.id === weaponId);
-          
+          const weaponItem = WEAPON_DB.find((w) => w.id === weaponId);
+
           // 무기가 없거나, 타입이 다르면 조건 불만족
           // (DB의 type이나 subType 컬럼을 확인해야 함. 여기서는 item.type 사용 가정)
           if (!weaponItem || !weaponItem.type.includes(mech.value)) {
@@ -962,7 +973,12 @@ export default function App() {
         }
 
         // ★ 버프 타입이면서 스탯을 가진 스킬만 계산 + 조건 만족 시
-        if (skill.type === "buff" && skill.stats && learnedLv > 0 && isConditionMet) {
+        if (
+          skill.type === "buff" &&
+          skill.stats &&
+          learnedLv > 0 &&
+          isConditionMet
+        ) {
           // 2. 아이템/아바타 등으로 올라간 보너스 레벨 가져오기
           // (Step 1에서 합산된 nextStats.skill.lv 데이터를 사용)
           const lvKey = `lv${skill.startLv}`;
@@ -2997,6 +3013,16 @@ export default function App() {
       setUserStats((prev) => {
         const next = JSON.parse(JSON.stringify(prev)); // Deep copy
         const slot = unequipTarget;
+
+        // ★ [FIX] 방어 코드 추가
+        if (!next.equipment) next.equipment = {};
+        if (!next.uniqueEffects) next.uniqueEffects = {};
+        if (!next.reinforce) next.reinforce = {};
+        if (!next.polish) next.polish = {};
+        if (!next.enchant) next.enchant = {};
+        if (!next.magic_unique) next.magic_unique = {};
+        if (!next.magic_common) next.magic_common = {};
+        if (!next.emblem) next.emblem = {};
 
         // 1. 장비 정보 초기화
         next.equipment[slot] = {
