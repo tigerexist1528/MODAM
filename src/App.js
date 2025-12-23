@@ -1220,7 +1220,7 @@ export default function App() {
         if (skill.type === "onhit") {
           // 패시브 데미지(양의공)는 스스로 발동 0회
           if (isPassiveDmg) rawCount = 0;
-          else rawCount = 15;
+          else rawCount = 18;
         } else if (effectiveCycle > 0) rawCount = 60 / effectiveCycle;
 
         // [Nugol] 실전 정수 사이클 (VIP용)
