@@ -285,6 +285,20 @@ export const loadGameData = async () => {
         tpCost: Number(row.tpCost || row.tp_cost || 0),
         cooltime: Number(row.cooltime || 0),
 
+        // 1. 시전 시간 (없으면 undefined -> App.js 기본값 사용)
+        actionTime:
+          row.actionTime || row.action_time
+            ? Number(row.actionTime || row.action_time)
+            : undefined,
+
+        // 2. 우선순위 (0도 의미있는 값이므로, 빈 값일 때만 undefined 처리)
+        priority:
+          row.priority !== undefined &&
+          row.priority !== null &&
+          row.priority !== ""
+            ? Number(row.priority)
+            : undefined,
+
         type: row.type || "active",
 
         // ★ [핵심] 데미지 계수 4대장 (컬럼명 대소문자/언더바 자동 대응)
