@@ -1120,43 +1120,30 @@ export default function App() {
       // 3. 투신의 함성 포션 (최종 데미지 12% 증가 -> 1.12배)
       if (potion) optionMultiplier *= 1.12;
 
+// -----------------------------------------------------------------
+      // [Step 4] 스킬 데미지 상세 계산 (Time Budget & Priority System)
       // -----------------------------------------------------------------
-      // [Step 4] 스킬 데미지 상세 계산 & 분석 데이터 생성 (누골 탭 추가)
-      // -----------------------------------------------------------------
-      let totalOneMinSkillDmg = 0; // 기존 (이론상 총합)
-      const myTreeList = []; // 기존 (이론상)
-      const potentialList = []; // 기존 (잠재력)
-      const nugolList = []; // ★ [New] 누골 (실전형 정수 카운트)
+      let totalOneMinSkillDmg = 0; 
+      const myTreeList = []; 
+      const potentialList = []; 
+      const nugolList = []; 
+      
+      const dmgTransferMap = {}; 
+      const nugolTransferMap = {}; 
 
-      // [FIX] 특정 변수 대신, 범용 '우체통'을 하나 만듭니다.
-      // 구조: { "SK_IS_14": 5000, "SK_IS_99": 1200 }
-      const dmgTransferMap = {}; // 내 스킬트리용 우체통
-      const nugolTransferMap = {}; // 누골용 우체통
-
-      // [공통 팩터 계산] (변수명 충돌 수정 Ver)
-
-      // 1. [방어력 감소] -> 데미지 증가율로 적용
+      // [공통 팩터 계산]
       const defShredVal = nextStats.defShred || 0;
       const defShredFactor = 1 + defShredVal / 100;
-
-      // 2. [적 레벨 기반 방어율] 계산
-      // 적 레벨 기본값 85
       const targetLevel = enemyLevel > 0 ? enemyLevel : 85;
+      
+      // 변수명 충돌 방지: charLevel -> myLevel
+      const myLevel = userStats.character.level || 85; 
 
-      // ★ [수정] 변수명 충돌 방지를 위해 charLevel -> myLevel로 변경
-      const myLevel = userStats.character.level || 85;
-
-      // ★ [최종 공식] 방어력 = 레벨^2 * 5.189
       const rawEnemyDef = targetLevel * targetLevel * 5.189;
-
-      // 던파 클래식 방어율 공식 (myLevel 사용)
       const attackerConstant = myLevel * 200;
       const defRate = rawEnemyDef / (rawEnemyDef + attackerConstant);
-
-      // 레벨에 따른 데미지 반영 비율 (1 - 방어율)
       const levelDefenseFactor = 1 - defRate;
 
-      // 최종 공통 배율
       const commonFactor =
         statFactor *
         eleFactor *
@@ -1171,19 +1158,25 @@ export default function App() {
         optionMultiplier;
 
       const classSkills = SKILL_DB.filter((s) => {
-        const isJob =
-          String(s.jobGroup).replace(/\s/g, "") ===
-          String(userStats.character.baseJob).replace(/\s/g, "");
-        const isSub =
-          String(s.jobName).replace(/\s/g, "") ===
-            String(subJob).replace(/\s/g, "") || s.jobName === "공용";
+        const isJob = String(s.jobGroup).replace(/\s/g, "") === String(userStats.character.baseJob).replace(/\s/g, "");
+        const isSub = String(s.jobName).replace(/\s/g, "") === String(subJob).replace(/\s/g, "") || s.jobName === "공용";
         return isJob && isSub && (s.type === "active" || s.type === "onhit");
       });
 
+      // [Time Budget] 시간 예산 관리 (총 60초)
+      const TIME_BUDGET = 60; 
+      let remainingTime = TIME_BUDGET;
+
+      // 계산용 임시 버퍼
+      const skillCalcBuffer = [];
+
+      // =========================================================
+      // Phase 1: 데이터 준비 및 잠재력(Potential) 계산
+      // =========================================================
       classSkills.forEach((skill) => {
         const lvKey = `lv${skill.startLv}`;
-        const levelFactor = specificSkillMultipliers[lvKey] || 1.0; // 레벨 보너스
-        const idFactor = specificSkillIdMultipliers[skill.id] || 1.0; // (New) ID 보너스
+        const levelFactor = specificSkillMultipliers[lvKey] || 1.0;
+        const idFactor = specificSkillIdMultipliers[skill.id] || 1.0; 
         const specificSkillFactor = levelFactor * idFactor;
         const specificCdrPct = nextStats.skill.cdr?.[lvKey] || 0;
         const finalCdrPct = Math.min(50, specificCdrPct);
@@ -1193,186 +1186,181 @@ export default function App() {
         const tpGrowth1Lv = skill.tpGrowth_1lv || 0;
         let tpBonusPct = 0;
         if (tpLv > 0) {
-          if (tpGrowth1Lv > 0)
-            tpBonusPct = tpGrowth1Lv + (tpLv - 1) * tpGrowthVal;
+          if (tpGrowth1Lv > 0) tpBonusPct = tpGrowth1Lv + (tpLv - 1) * tpGrowthVal;
           else tpBonusPct = tpLv * tpGrowthVal;
         }
         const tpMultiplier = 1 + tpBonusPct / 100;
 
         // -------------------------------
-        // [Logic 1] 내 스킬트리 (My Tree) & [Logic 3] 누골 (Nugol)
+        // [Logic 1] 내 스킬트리 1차 계산 (버퍼링)
         // -------------------------------
         const learnedLv = userStats.skill.levels[skill.id] || skill.minLv;
+        
         if (learnedLv > 0) {
           const bonusLv = nextStats.skill.lv[lvKey] || 0;
           const finalLv = Math.min(learnedLv + bonusLv, skill.limitLv);
 
-          const finalRate =
-            skill.baseDamageRate + skill.damageRateGrowth * (finalLv - 1);
-          const finalFlat =
-            skill.baseFlatDamage + skill.flatDamageGrowth * (finalLv - 1);
+          const finalRate = skill.baseDamageRate + skill.damageRateGrowth * (finalLv - 1);
+          const finalFlat = skill.baseFlatDamage + skill.flatDamageGrowth * (finalLv - 1);
           const skillBaseDmg = mainAtkVal * (finalRate / 100) + finalFlat;
+          const rawOneHitDmg = skillBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
 
-          // 1. 기본 1타 데미지 계산 (기존과 동일)
-          const rawOneHitDmg =
-            skillBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
-
-          // ★ Context 포장하기 (완벽한 복사를 위해 재료 추가)
+          // 메커니즘 Context 준비
           const mechContext = {
             allSkills: SKILL_DB,
             commonFactor,
             mainAtkVal,
-            tpMultiplier, // (내 스킬 TP)
-            specificSkillFactor, // (내 스킬 룬/레벨링)
-
-            // ▼ [NEW] 타겟 스킬 계산용 데이터들
-            skillBonusLevels: nextStats.skill.lv, // 장비로 오른 레벨 (+Lv)
-            skillDmgMap: specificSkillMultipliers, // 레벨 구간별 증뎀 (룬 등)
-            skillIdDmgMap: specificSkillIdMultipliers, // ID 지정 증뎀 (고유옵 등)
+            tpMultiplier,
+            specificSkillFactor,
+            skillBonusLevels: nextStats.skill.lv,
+            skillDmgMap: specificSkillMultipliers,
+            skillIdDmgMap: specificSkillIdMultipliers,
           };
 
-          // ★ 어댑터 호출 (mechanicTransferDmg 받아오기)
           const {
             finalDmg: oneHitDmg,
             additionalDmg: mechAdd,
             mechanicTransferDmg,
-            transferTargetId, // ★ [NEW] 받는 사람 ID (예: "SK_IS_14")
+            transferTargetId,
             extraText,
           } = applyJobMechanics(skill, userStats, rawOneHitDmg, mechContext);
 
-          // =========================================================
-          // ★★★ [FIX] 실전성을 고려한 횟수 계산 로직 (수정됨) ★★★
-          // =========================================================
+          // 쿨타임 및 동작시간(Action Time)
           let cooldown = skill.cooltime;
           let realCooldown = cooldown * (1 - finalCdrPct / 100);
+          
+          // [DB] actionTime이 없으면 기본값 적용
+          const defaultActionTime = (skill.category === 'basic' || skill.category === 'common') ? 0.8 : 1.0;
+          const actionTime = skill.actionTime || defaultActionTime;
 
-          // [1] 최소 동작 시간 (Human Delay) 정의
-          // 쿨타임이 아무리 짧아도 스킬 시전 모션 때문에 최소 0.7~0.8초는 소요됩니다.
-          // 공용 스킬(common)은 주력기가 아니므로 패널티를 더 줍니다(1.5초).
-          let minActionTime = 0.75;
-          if (skill.category === "common") minActionTime = 2.0; // 휘둘러치기 등 견제
-          if (skill.category === "basic") minActionTime = 1.0; // 기본기
+          // 사이클 시간 (쿨타임 vs 동작시간)
+          const effectiveCycleTime = Math.max(realCooldown, actionTime);
 
-          // 실제 1회 사이클 시간 = 쿨타임과 최소동작시간 중 큰 값
-          const effectiveCycleTime = Math.max(realCooldown, minActionTime);
+          // 이론상 최대 횟수 (Raw Count)
+          let rawCount = 0;
+          if (skill.type === "onhit") rawCount = 15; // 패시브 고정
+          else if (effectiveCycleTime > 0) rawCount = 60 / effectiveCycleTime;
+          else rawCount = 1;
 
-          // (A) 이론상 횟수 (DPS용)
-          let castsPerMin = 0;
-          if (skill.type === "onhit") castsPerMin = 15; // 패시브/평타류 고정
-          else {
-            // 0초 쿨타임 방지 및 애니메이션 시간 반영
-            if (effectiveCycleTime > 0) castsPerMin = 60 / effectiveCycleTime;
-            else castsPerMin = 1;
-          }
+          // [Priority] 우선순위 설정
+          let defaultPriority = 50;
+          if (skill.category === 'normal' || skill.type === 'active') defaultPriority = 100;
+          if (skill.category === 'common') defaultPriority = 10;
+          
+          const priority = skill.priority !== undefined ? skill.priority : defaultPriority;
 
-          // (B) 누골 실전 횟수 (정수, 쿨타임 딱 맞춰 못 쓰는 현실 반영)
-          let nugolCount = 0;
-          if (skill.type === "onhit") nugolCount = 15;
-          else {
-            // 누골 횟수도 'effectiveCycleTime'을 기준으로 계산
-            if (effectiveCycleTime > 0) {
-              // 60초 안에 몇 번 들어가는지 (첫타 0초 발동 가정)
-              // 예: 쿨 40초 -> 0초, 40초 (2회)
-              // 예: 쿨 0.5초(보정 0.8초) -> 60/0.8 = 75회
-              if (effectiveCycleTime < 60) {
-                nugolCount = Math.floor(60 / effectiveCycleTime);
-                // 딱 떨어지지 않고 시간이 남으면 1회 더 칠 가능성 있음 (취향 차이)
-                // 여기서는 보수적으로 floor 처리하거나 +1 할 수 있음
-                if (60 % effectiveCycleTime > 0.1) nugolCount += 1;
-              } else {
-                nugolCount = 1; // 60초 넘으면 1회
-              }
-            } else {
-              nugolCount = 0;
-            }
-          }
+          // 버퍼에 푸시
+          skillCalcBuffer.push({
+            skill,
+            oneHitDmg,
+            mechAdd,
+            mechanicTransferDmg,
+            transferTargetId,
+            actionTime,
+            rawCount,
+            priority,
+            effectiveCycleTime, 
+            castsPerMin: 0,
+            realCooldown,
+          });
 
-          // ★★★ [NEW] 저금통 입금 (이곳이 핵심입니다) ★★★
-          if (mechanicTransferDmg > 0 && transferTargetId) {
-            // 1. 내 스킬트리용 입금
+          // -------------------------------
+          // [Logic 2] 잠재력(Potential) 분석
+          // -------------------------------
+          const maxPossibleLv = Math.min(skill.maxLv + bonusLv, skill.limitLv);
+          const maxRate = skill.baseDamageRate + skill.damageRateGrowth * (maxPossibleLv - 1);
+          const maxFlat = skill.baseFlatDamage + skill.flatDamageGrowth * (maxPossibleLv - 1);
+          const maxBaseDmg = mainAtkVal * (maxRate / 100) + maxFlat;
+          const rawMaxOneHitDmg = maxBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
+
+          const { finalDmg: maxOneHitDmg, additionalDmg: maxMechAdd } = 
+              applyJobMechanics(skill, userStats, rawMaxOneHitDmg, mechContext);
+
+          const potentialTotalDmg = maxOneHitDmg * rawCount + (maxMechAdd || 0) * rawCount;
+
+          potentialList.push({
+            id: skill.id,
+            name: skill.name,
+            icon: skill.img,
+            damage: Math.floor(potentialTotalDmg),
+            count: skill.type === "onhit" ? "-" : Math.floor(rawCount * 10) / 10,
+            rawDmg: potentialTotalDmg,
+          });
+        }
+      });
+
+      // =========================================================
+      // Phase 2: 우선순위 정렬 및 예산 배정 (Time Allocation)
+      // =========================================================
+      // 우선순위 높은 순서대로 정렬 (내림차순)
+      skillCalcBuffer.sort((a, b) => b.priority - a.priority);
+
+      skillCalcBuffer.forEach((data) => {
+        if (data.skill.type === "onhit") {
+          data.castsPerMin = data.rawCount;
+          return;
+        }
+
+        const maxPossible = data.rawCount;
+        const timeLimitCount = remainingTime / data.actionTime;
+        const finalCount = Math.min(maxPossible, timeLimitCount);
+
+        data.castsPerMin = finalCount;
+
+        const timeUsed = finalCount * data.actionTime;
+        remainingTime -= timeUsed;
+        
+        if (remainingTime < 0) remainingTime = 0;
+      });
+
+      // =========================================================
+      // Phase 3: 최종 결과 확정 및 리스트 생성
+      // =========================================================
+      skillCalcBuffer.forEach((data) => {
+         const { skill, oneHitDmg, mechAdd, mechanicTransferDmg, transferTargetId, castsPerMin, effectiveCycleTime } = data;
+
+         // (A) 내 스킬트리 딜 계산
+         const totalDmg = (oneHitDmg * castsPerMin) + ((mechAdd || 0) * castsPerMin);
+         totalOneMinSkillDmg += totalDmg;
+
+         if (mechanicTransferDmg > 0 && transferTargetId) {
             const totalTransfer = mechanicTransferDmg * castsPerMin;
-            // 기존에 값이 있으면 더하고, 없으면 초기화
-            dmgTransferMap[transferTargetId] =
-              (dmgTransferMap[transferTargetId] || 0) + totalTransfer;
+            dmgTransferMap[transferTargetId] = (dmgTransferMap[transferTargetId] || 0) + totalTransfer;
+         }
 
-            // 2. 누골용 입금
-            const totalNugolTransfer = mechanicTransferDmg * nugolCount;
-            nugolTransferMap[transferTargetId] =
-              (nugolTransferMap[transferTargetId] || 0) + totalNugolTransfer;
-          }
-
-          // ★ 내 딜 계산 (transfer는 남 줄 돈이니 제외, mechAdd는 내 돈이니 포함)
-          const totalDmg =
-            oneHitDmg * castsPerMin + (mechAdd || 0) * castsPerMin;
-          const nugolTotalDmg =
-            oneHitDmg * nugolCount + (mechAdd || 0) * nugolCount;
-
-          totalOneMinSkillDmg += totalDmg;
-
-          // 리스트 추가
-          const itemData = {
+         myTreeList.push({
             id: skill.id,
             name: skill.name,
             icon: skill.img,
             damage: Math.floor(totalDmg),
-            count:
-              skill.type === "onhit" ? "-" : Math.floor(castsPerMin * 10) / 10,
+            count: skill.type === "onhit" ? "-" : Math.floor(castsPerMin * 10) / 10,
             rawDmg: totalDmg,
-          };
-          myTreeList.push(itemData);
+         });
 
-          // 누골 데이터 추가
-          nugolList.push({
-            ...itemData,
-            damage: Math.floor(nugolTotalDmg), // 정수 횟수 기반 데미지
-            count: skill.type === "onhit" ? "-" : nugolCount, // 정수 횟수
+         // (B) 누골 딜 계산
+         let nugolCount = 0;
+         if (skill.type === "onhit") nugolCount = 15;
+         else if (effectiveCycleTime > 0) {
+             if (effectiveCycleTime < 60) nugolCount = Math.floor(60 / effectiveCycleTime);
+             else nugolCount = 1;
+             
+             if ((60 % effectiveCycleTime) >= data.actionTime) nugolCount += 1;
+         }
+
+         if (mechanicTransferDmg > 0 && transferTargetId) {
+            const totalNugolTransfer = mechanicTransferDmg * nugolCount;
+            nugolTransferMap[transferTargetId] = (nugolTransferMap[transferTargetId] || 0) + totalNugolTransfer;
+         }
+
+         const nugolTotalDmg = (oneHitDmg * nugolCount) + ((mechAdd || 0) * nugolCount);
+         nugolList.push({
+            id: skill.id,
+            name: skill.name,
+            icon: skill.img,
+            damage: Math.floor(nugolTotalDmg),
+            count: skill.type === "onhit" ? "-" : nugolCount,
             rawDmg: nugolTotalDmg,
-          });
-        }
-
-        // -------------------------------
-        // [Logic 2] 잠재력 분석 (Max Level) - 기존 유지
-        // -------------------------------
-        const bonusLv = nextStats.skill.lv[lvKey] || 0;
-        const maxPossibleLv = Math.min(skill.maxLv + bonusLv, skill.limitLv);
-
-        const maxRate =
-          skill.baseDamageRate + skill.damageRateGrowth * (maxPossibleLv - 1);
-        const maxFlat =
-          skill.baseFlatDamage + skill.flatDamageGrowth * (maxPossibleLv - 1);
-        const maxBaseDmg = mainAtkVal * (maxRate / 100) + maxFlat;
-
-        // 1. 기본 잠재력 1타 데미지 계산
-        const rawMaxOneHitDmg =
-          maxBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
-
-        // ★★★ [2. 만능 어댑터 연결] 잠재력에도 특수 로직 적용 ★★★
-        const {
-          finalDmg: maxOneHitDmg, // 특수능력이 반영된 데미지를 'maxOneHitDmg'로 덮어씁니다
-          additionalDmg: mechAdd, // 추가 데미지 (지속피해 등)
-        } = applyJobMechanics(skill, userStats, rawMaxOneHitDmg, SKILL_DB);
-
-        let cooldown = skill.cooltime;
-        let realCooldown = cooldown * (1 - finalCdrPct / 100);
-        let castsPerMin = 0;
-        if (skill.type === "onhit") castsPerMin = 15;
-        else {
-          if (realCooldown > 0) castsPerMin = 60 / realCooldown;
-          else castsPerMin = 1;
-        }
-
-        const potentialTotalDmg =
-          maxOneHitDmg * castsPerMin + (mechAdd || 0) * castsPerMin;
-
-        potentialList.push({
-          id: skill.id,
-          name: skill.name,
-          icon: skill.img,
-          damage: Math.floor(potentialTotalDmg),
-          count:
-            skill.type === "onhit" ? "-" : Math.floor(castsPerMin * 10) / 10,
-          rawDmg: potentialTotalDmg,
-        });
+         });
       });
 
       // -----------------------------------------------------------------
