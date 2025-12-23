@@ -103,12 +103,12 @@ const SkillAnalysisPage = ({
           <div style={{ display: "flex", flexDirection: "column" }}>
             <span style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
               {analysisSubTab === "NUGOL"
-                ? "Top 12 스킬 합산 데미지"
+                ? "Top 18 스킬 합산 데미지"
                 : "총 데미지 합계"}
             </span>
             {analysisSubTab === "NUGOL" && (
               <span style={{ fontSize: "0.8rem", color: "#888" }}>
-                * 스킬 슬롯 제한을 고려하여 상위 12개 스킬만 합산합니다.
+                * 스킬 슬롯 제한을 고려하여 상위 18개 스킬만 합산합니다.
               </span>
             )}
           </div>
