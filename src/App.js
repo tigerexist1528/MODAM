@@ -897,6 +897,13 @@ export default function App() {
       const inflicted = [];
       if (nextStats.elInflict1 > 0) inflicted.push(nextStats.elInflict1);
       if (nextStats.elInflict2 > 0) inflicted.push(nextStats.elInflict2);
+
+      // ★ [NEW] 이단심판관 전용: 화속성(1) & 명속성(3) 자동 부여
+      if (userStats.character.subJob === "이단심판관") {
+        if (!inflicted.includes(1)) inflicted.push(1); // 화속성 추가
+        if (!inflicted.includes(3)) inflicted.push(3); // 명속성 추가
+      }
+
       let maxEle = 0;
       if (inflicted.length > 0) {
         let currentMax = -9999;
