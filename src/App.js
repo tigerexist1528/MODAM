@@ -339,7 +339,6 @@ export default function App() {
       let nextStats = JSON.parse(JSON.stringify(initialState.stats));
 
       // ★ [핵심] 스탯 출처 기록용 저장소 초기화
-      // 이 변수가 없거나 초기화되지 않으면 내역이 쌓이지 않습니다.
       const statSources = {};
 
       // 복리 연산 팩터 초기화
@@ -347,13 +346,12 @@ export default function App() {
       let totalAllTypeDmgRatio = 1.0;
       let totalFinalDmgRatio = 1.0;
       const specificSkillMultipliers = {};
-      const specificSkillIdMultipliers = {}; // (New) ID별 저장소
+      const specificSkillIdMultipliers = {};
 
-      // 헬퍼: 스탯 합산 및 출처 기록 (최종 통합 Ver)
+      // 헬퍼: 스탯 합산 및 출처 기록
       const mergeStats = (sourceStats, sourceName = "기타") => {
         if (!sourceStats) return;
 
-        // 상태이상 Flat Key 목록
         const statusKeys = [
           "poisonDmg",
           "bleedDmg",
@@ -369,24 +367,16 @@ export default function App() {
           const val = sourceStats[key];
           if (val === null || val === undefined) return;
 
-          // =========================================================
-          // 1. 상태이상(Status) 처리 (Flat Key & Object)
-          // =========================================================
-
-          // Case A: bleedDmg: 15 처럼 바로 들어온 경우
           if (statusKeys.includes(key)) {
             if (val !== 0) {
-              // 값 합산
               if (!nextStats.status[key]) nextStats.status[key] = 0;
               nextStats.status[key] += val;
-              // 소스 기록
               if (!statSources[key]) statSources[key] = [];
               statSources[key].push({ source: sourceName, value: val });
             }
             return;
           }
 
-          // Case B: status: { ... } 객체로 들어온 경우
           if (key === "status" && typeof val === "object") {
             Object.entries(val).forEach(([sKey, sVal]) => {
               if (sVal === 0) return;
@@ -399,9 +389,6 @@ export default function App() {
             return;
           }
 
-          // =========================================================
-          // 2. 객체형 스탯 (Skill 등) 처리
-          // =========================================================
           if (typeof val === "object" && !Array.isArray(val)) {
             if (key === "skill") {
               if (val.dmg) {
@@ -422,14 +409,10 @@ export default function App() {
                 Object.keys(val.idDmg).forEach((sId) => {
                   const v = val.idDmg[sId];
                   if (v !== 0) {
-                    // 저장소 초기화
                     if (!specificSkillIdMultipliers[sId])
                       specificSkillIdMultipliers[sId] = 1.0;
-
-                    // 복리 연산 (1.25 * 1.1 ...)
                     specificSkillIdMultipliers[sId] *= Math.max(0, 1 + v / 100);
 
-                    // 소스 기록 (어디서 올라갔는지 확인용)
                     const recKey = `skill_dmg_id_${sId}`;
                     if (!statSources[recKey]) statSources[recKey] = [];
                     statSources[recKey].push({ source: sourceName, value: v });
@@ -454,7 +437,6 @@ export default function App() {
                 }
               });
             } else {
-              // 그 외 객체 (elInflict 등)
               if (!nextStats[key]) nextStats[key] = {};
               Object.keys(val).forEach((subKey) => {
                 nextStats[key][subKey] =
@@ -471,18 +453,11 @@ export default function App() {
             return;
           }
 
-          // =========================================================
-          // 3. 숫자형 스탯 (특수 로직 포함)
-          // =========================================================
           if (typeof val === "number") {
             if (val === 0) return;
-
-            // ★ [핵심] 무조건 소스부터 기록합니다. (예외 없음)
-            // allTypeDmg 등도 여기서 기록되므로 누락되지 않습니다.
             if (!statSources[key]) statSources[key] = [];
             statSources[key].push({ source: sourceName, value: val });
 
-            // ★ [계산] 그 다음, 키에 맞는 계산을 수행합니다.
             if (key === "skillAtkInc") {
               globalSkillAtkMultiplier *= Math.max(0, 1 + val / 100);
             } else if (key === "allTypeDmg") {
@@ -492,14 +467,11 @@ export default function App() {
             } else if (key === "elInflict1" || key === "elInflict2") {
               nextStats[key] = Math.max(nextStats[key], val);
             } else if (key === "allEle") {
-              // 모속강은 4속성에 각각 더해줌
               nextStats.fireEle = (nextStats.fireEle || 0) + val;
               nextStats.waterEle = (nextStats.waterEle || 0) + val;
               nextStats.lightEle = (nextStats.lightEle || 0) + val;
               nextStats.darkEle = (nextStats.darkEle || 0) + val;
-              // allEle 자체는 위에서 이미 기록됨
             } else {
-              // 나머지 일반 스탯 (힘, 물공, 속강 등)은 단순 합산
               if (nextStats[key] === undefined) nextStats[key] = 0;
               nextStats[key] += val;
             }
@@ -507,43 +479,25 @@ export default function App() {
         });
       };
 
-      // -----------------------------------------------------------------
-      // 장비, 세트, 내실 등 모든 스탯 합산
-      // -----------------------------------------------------------------
-
-      // 1. 장비 옵션 적용 (Weapon ~ Artifact)
+      // 1. 장비 옵션 적용
       const setStatusMap = {};
-
       EQUIP_SLOTS.forEach((slot) => {
         const eq = userStats.equipment[slot];
         if (!eq || eq.itemId === 0) return;
-
-        // DB에서 아이템 정보 찾기
         const db = slot === "무기" ? WEAPON_DB : GEAR_DB;
         const item = db.find((i) => i.id === eq.itemId);
 
         if (item) {
-          // (1) 기본 스탯 병합 (이름 전달)
-          // stats 내부에 status 객체가 중첩되어 있어도 mergeStats가 이름을 잘 전달합니다.
           if (item.stats) mergeStats(item.stats, item.name);
-
-          // (2) 별도 status 객체 병합 (이름 전달)
-          // 아이템 DB 구조상 status가 따로 빠져있는 경우를 위해 필수입니다.
           if (item.status) mergeStats(item.status, item.name);
-
-          // (3) 성장형 스탯 (statGrowth) 처리
-          // 혹시 상태이상 옵션이 성장형(레벨 비례)으로 붙어있는 경우 대비
           if (item.statGrowth) {
-            const currentLv = userStats.character.level || 85; // 현재 캐릭터 레벨
+            const currentLv = userStats.character.level || 85;
             const growthStats = {};
             Object.entries(item.statGrowth).forEach(([k, v]) => {
-              growthStats[k] = v * currentLv; // 단순 레벨 비례 예시
+              growthStats[k] = v * currentLv;
             });
-            // ★ 성장 스탯도 반드시 이름을 넘겨야 합니다!
             mergeStats(growthStats, item.name);
           }
-
-          // 세트 카운팅 (기존 로직 유지)
           const code = item.stats?.setCode;
           if (code) {
             if (!setStatusMap[code]) {
@@ -561,13 +515,6 @@ export default function App() {
                 (setStatusMap[code].variants[variant] || 0) + 1;
             }
           }
-        }
-
-        // (4) 마법부여 / 엠블렘 등 부가 옵션 (별도 소스명 사용)
-        // 만약 여기서 상태이상을 챙긴다면 "마법부여" 등으로 뜰 것입니다.
-        if (eq.enchant && eq.enchant !== "선택 안함") {
-          // (예시) 실제 구현에 따라 다름
-          // mergeStats(enchantStats, "마법부여");
         }
       });
 
@@ -605,7 +552,6 @@ export default function App() {
           }
 
           if (appliedItem) {
-            // 이름 정제
             let displayName = appliedItem.name;
             let prefix = null;
             if (appliedItem.name.includes(":")) {
@@ -618,7 +564,6 @@ export default function App() {
               .replace("5세트 효과", "")
               .trim();
 
-            // ★ [적용] 여기서 딱 한 번만 적용합니다! (이름 포함)
             if (appliedItem.stats) mergeStats(appliedItem.stats, cleanName);
             if (appliedItem.status) mergeStats(appliedItem.status, cleanName);
 
@@ -635,14 +580,11 @@ export default function App() {
       });
       setActiveSets(nextActiveSets);
 
-      // -----------------------------------------------------------------
-      // 7. 고유 효과 (Unique Effect) 적용 - 엔진 규격 완벽 호환 Ver
-      // -----------------------------------------------------------------
+      // 7. 고유 효과 (Unique Effect) 적용
       const { uniqueEffects } = userStats;
       const { subJob } = userStats.character;
 
       if (uniqueEffects && uniqueEffectDb && uniqueEffectDb.length > 0) {
-        // 1. 불필요한 DB 컬럼 제외 목록
         const excludedKeys = [
           "id",
           "created_at",
@@ -656,8 +598,6 @@ export default function App() {
           "slot",
           "option_name",
         ];
-
-        // 2. 뱀 표기법(_a) -> 낙타 표기법(A) 변환기
         const toCamelCase = (str) => {
           return str.replace(/_([a-z0-9])/g, (match, letter) =>
             letter.toUpperCase()
@@ -666,10 +606,7 @@ export default function App() {
 
         Object.entries(uniqueEffects).forEach(([slotName, optionName]) => {
           if (!optionName) return;
-
           const targetType = slotName === "무기" ? "무기" : "익시드";
-
-          // DB에서 데이터 매칭
           const effectData = uniqueEffectDb.find(
             (item) =>
               item.type === targetType &&
@@ -678,77 +615,45 @@ export default function App() {
           );
 
           if (effectData) {
-            // ★ [핵심] 엔진(Source 10)이 좋아하는 구조로 초기화
             const finalStats = {
-              skill: { dmg: {}, lv: {}, cdr: {} },
-            };
+              skill: { dmg: {}, lv: {}, cdr: {}, idDmg: {} },
+            }; // idDmg 초기화 추가
 
             Object.entries(effectData).forEach(([key, val]) => {
-              // 유효성 체크 (숫자가 아니거나 제외 키면 패스)
               if (excludedKeys.includes(key) || val === null || val === "")
                 return;
-
               const numVal = Number(val);
               if (isNaN(numVal) || numVal === 0) return;
 
-              // =========================================================
-              // ★ [NEW] 2단계 코드 삽입 위치 (여기입니다!)
-              // =========================================================
-
-              // (1) 특정 스킬 ID 저격 로직 (예: stats_skill_dmg_id_105)
               const skillIdMatch = key.match(/skill_dmg_?id_?([a-zA-Z0-9_]+)/);
-
               if (skillIdMatch) {
-                const skillId = skillIdMatch[1]; // "105" 추출
-
-                // stats.skill 안에 'idDmg'라는 새 방이 없으면 만듭니다.
-                if (!finalStats.skill.idDmg) finalStats.skill.idDmg = {};
-
-                // 해당 ID에 값을 누적합니다.
+                const skillId = skillIdMatch[1];
                 finalStats.skill.idDmg[skillId] =
                   (finalStats.skill.idDmg[skillId] || 0) + numVal;
-
-                return; // 처리가 끝났으니 다음 키로 넘어갑니다.
+                return;
               }
 
-              // -------------------------------------------------------
-              // Case A: 스킬 공격력 (예: stats_skill_dmg_lv45)
-              // -------------------------------------------------------
               const skillDmgMatch = key.match(/skill_dmg_?lv_?(\d+)/);
               if (skillDmgMatch) {
-                const lvNum = skillDmgMatch[1]; // "45"
-
-                // ★★★ [수정] 엔진은 "lv45"를 원합니다! "45"가 아니라요.
+                const lvNum = skillDmgMatch[1];
                 const engineKey = `lv${lvNum}`;
-
                 finalStats.skill.dmg[engineKey] =
                   (finalStats.skill.dmg[engineKey] || 0) + numVal;
                 return;
               }
 
-              // -------------------------------------------------------
-              // Case B: 스킬 레벨 (예: skill_lv_45)
-              // -------------------------------------------------------
               const skillLvMatch = key.match(/skill_lv_?(\d+)/);
               if (skillLvMatch) {
                 const lvNum = skillLvMatch[1];
                 const engineKey = `lv${lvNum}`;
-
                 finalStats.skill.lv[engineKey] =
                   (finalStats.skill.lv[engineKey] || 0) + numVal;
                 return;
               }
 
-              // -------------------------------------------------------
-              // Case C: 일반 스탯 (예: phys_atk -> physAtk)
-              // -------------------------------------------------------
-              // 엔진(Source 31)의 일반 합산 로직을 태웁니다.
               const camelKey = toCamelCase(key);
               finalStats[camelKey] = (finalStats[camelKey] || 0) + numVal;
             });
-
-            // 3. 엔진의 mergeStats 함수 호출
-            // 이제 구조가 완벽하므로 Source 10-12번 로직(곱연산)을 타게 됩니다.
             mergeStats(finalStats, `고유효과(${slotName}-${optionName})`);
           }
         });
@@ -759,18 +664,18 @@ export default function App() {
         const rLevel = userStats.reinforce[slot] || 0;
         if (rLevel > 0) {
           const rStats = REINFORCE_DB[slot]?.[rLevel];
-          if (rStats) mergeStats(rStats, slot + " 강화"); // [cite: 17]
+          if (rStats) mergeStats(rStats, slot + " 강화");
         }
         const pLevel = userStats.polish[slot] || 0;
         if (pLevel > 0) {
           const pStats = POLISH_DB[slot]?.[pLevel];
-          if (pStats) mergeStats(pStats, slot + " 연마"); // [cite: 17]
+          if (pStats) mergeStats(pStats, slot + " 연마");
         }
         const enchName = userStats.enchant[slot];
         if (enchName && enchName !== "선택 안함") {
           const list = ENCHANT_LIST_BY_SLOT[slot] || [];
           const target = list.find((e) => e.name === enchName);
-          if (target && target.stats) mergeStats(target.stats, target.name); // [cite: 18]
+          if (target && target.stats) mergeStats(target.stats, target.name);
         }
         let mGroup = null;
         if (slot === "무기") mGroup = "무기";
@@ -784,11 +689,11 @@ export default function App() {
           const cLabel = userStats.magic_common[slot];
           if (uLabel && uLabel !== "선택 안함") {
             const uOpt = mData.unique.find((o) => o.label === uLabel);
-            if (uOpt) mergeStats(uOpt.stats, "마법봉인(고유)"); // [cite: 21]
+            if (uOpt) mergeStats(uOpt.stats, "마법봉인(고유)");
           }
           if (cLabel && cLabel !== "선택 안함") {
             const cOpt = mData.common.find((o) => o.label === cLabel);
-            if (cOpt) mergeStats(cOpt.stats, "마법봉인(일반)"); // [cite: 22]
+            if (cOpt) mergeStats(cOpt.stats, "마법봉인(일반)");
           }
         }
         const emblemData = userStats.emblem[slot];
@@ -798,7 +703,7 @@ export default function App() {
           ? [emblemData]
           : [];
         emblemList.forEach((emb) => {
-          if (emb && emb.stats) mergeStats(emb.stats, emb.name + " 엠블렘"); // [cite: 26]
+          if (emb && emb.stats) mergeStats(emb.stats, emb.name + " 엠블렘");
         });
       });
 
@@ -808,16 +713,16 @@ export default function App() {
       if (TRAINING_DB.concentrator) {
         for (let i = 1; i <= concentrator; i++)
           if (TRAINING_DB.concentrator[i])
-            mergeStats(TRAINING_DB.concentrator[i], "마력응축기"); // [cite: 28]
+            mergeStats(TRAINING_DB.concentrator[i], "마력응축기");
       }
       if (TRAINING_DB.hopae) {
         for (let i = 1; i <= hopae; i++)
-          if (TRAINING_DB.hopae[i]) mergeStats(TRAINING_DB.hopae[i], "호패"); // [cite: 29]
+          if (TRAINING_DB.hopae[i]) mergeStats(TRAINING_DB.hopae[i], "호패");
       }
       if (TRAINING_DB.breakthrough) {
         for (let i = 1; i <= breakthrough; i++)
           if (TRAINING_DB.breakthrough[i])
-            mergeStats(TRAINING_DB.breakthrough[i], "돌파"); // [cite: 30]
+            mergeStats(TRAINING_DB.breakthrough[i], "돌파");
       }
       if (TRAINING_DB.castle_seal) {
         if (TRAINING_DB.castle_seal.base)
@@ -826,35 +731,29 @@ export default function App() {
           const csMain = TRAINING_DB.castle_seal.main.find(
             (o) => o.name === sealMain
           );
-          if (csMain) mergeStats(csMain.stats, "성안(주요)"); // [cite: 33]
+          if (csMain) mergeStats(csMain.stats, "성안(주요)");
         }
         if (sealSub) {
           const csSub = TRAINING_DB.castle_seal.sub.find(
             (o) => o.name === sealSub
           );
-          // ★ [수정] 성안(보조) 이름표 추가
           if (csSub) mergeStats(csSub.stats, "성안(보조)");
         }
       }
       const avSet = userStats.avatarSettings.set;
       if (avSet && avSet !== "없음" && AVATAR_DB[avSet])
-        mergeStats(AVATAR_DB[avSet], avSet); // [cite: 35]
+        mergeStats(AVATAR_DB[avSet], avSet);
 
       // 5. 스킬룬
       const { slots, engrave } = userStats.skillRunes;
-
-      // [A] 일반 룬
       slots.forEach((rune) => {
         if (rune && rune.stats && rune.type !== "special") {
-          mergeStats(rune.stats, rune.name); // [cite: 38]
+          mergeStats(rune.stats, rune.name);
         }
       });
-
-      // [B] 특수 룬
       const synergyJobs = ["와일드베인", "윈드시어"];
       const isSynergy = synergyJobs.includes(subJob);
       const threshold = isSynergy ? 1 : 2;
-
       let gahoCount = 0;
       let jiheCount = 0;
       slots.forEach((rune) => {
@@ -863,39 +762,29 @@ export default function App() {
           else if (rune.name.includes("지혜")) jiheCount++;
         }
       });
-
       if (gahoCount >= threshold) {
         const gahoData = SKILL_RUNE_DB.find(
           (r) => r.name.includes("가호") && r.type === "special"
         );
-        if (gahoData && gahoData.stats) {
-          mergeStats(gahoData.stats, "가호의 룬(세트)"); // [cite: 44]
-        }
+        if (gahoData && gahoData.stats)
+          mergeStats(gahoData.stats, "가호의 룬(세트)");
       }
       if (jiheCount >= threshold) {
         const jiheData = SKILL_RUNE_DB.find(
           (r) => r.name.includes("지혜") && r.type === "special"
         );
-        if (jiheData && jiheData.stats) {
-          mergeStats(jiheData.stats, "지혜의 룬(세트)"); // [cite: 46]
-        }
+        if (jiheData && jiheData.stats)
+          mergeStats(jiheData.stats, "지혜의 룬(세트)");
       }
-
-      // ★★★ [C] 룬 각인 (신규 추가) ★★★
       if (engrave && engrave.name && engrave.index) {
-        // DB에서 해당 각인 정보를 찾습니다.
-        // SKILL_RUNE_DB는 App.js 상단에서 이미 import 되어 있어야 합니다.
         const targetEngrave = SKILL_RUNE_DB.find(
           (r) =>
             r.type === "engrave" &&
             r.name === engrave.name &&
             r.index === engrave.index
         );
-
-        if (targetEngrave && targetEngrave.stats) {
-          // 스탯 합산 (출처 이름을 '룬 각인' 또는 구체적인 이름으로 표시)
+        if (targetEngrave && targetEngrave.stats)
           mergeStats(targetEngrave.stats, `룬 각인(${engrave.name})`);
-        }
       }
 
       // 6. 장비 포인트
@@ -922,7 +811,6 @@ export default function App() {
           (a, b) => b.threshold - a.threshold
         );
         const bonus = sorted.find((tier) => currentPoint >= tier.threshold);
-        // ★ [수정] 장비 포인트 보너스 이름표 추가
         if (bonus && bonus.stats) mergeStats(bonus.stats, "장비 포인트 보너스");
       };
       applyGearPointBonus("armor", gpArmor);
@@ -930,7 +818,7 @@ export default function App() {
       applyGearPointBonus("special", gpSpecial);
 
       // -----------------------------------------------------------------
-      // [Step 2] BUFF 스킬 적용 (수정: 보너스 레벨 합산 & 한계돌파 적용)
+      // [Step 2] BUFF 스킬 적용
       // -----------------------------------------------------------------
       const mySkills = SKILL_DB.filter((s) => {
         const isJob =
@@ -943,13 +831,8 @@ export default function App() {
       });
 
       mySkills.forEach((skill) => {
-        // 1. 내가 직접 찍은 레벨
         const learnedLv = userStats.skill.levels[skill.id] || skill.minLv;
-
-        // ★ [NEW] 조건부 버프 체크 (광검 사용 가능 등)
         let isConditionMet = true;
-
-        // mechanics 파싱
         let mech = skill.mechanics;
         if (typeof mech === "string") {
           try {
@@ -958,59 +841,32 @@ export default function App() {
             mech = null;
           }
         }
-
-        // 조건: 무기 제한 (condition_weapon)
         if (mech && mech.type === "condition_weapon") {
-          // 현재 착용한 무기 정보 가져오기
           const weaponId = userStats.equipment?.무기?.itemId;
           const weaponItem = WEAPON_DB.find((w) => w.id === weaponId);
-
-          // 무기가 없거나, 타입이 다르면 조건 불만족
-          // (DB의 type이나 subType 컬럼을 확인해야 함. 여기서는 item.type 사용 가정)
           if (!weaponItem || !weaponItem.type.includes(mech.value)) {
             isConditionMet = false;
           }
         }
 
-        // ★ 버프 타입이면서 스탯을 가진 스킬만 계산 + 조건 만족 시
         if (
           skill.type === "buff" &&
           skill.stats &&
           learnedLv > 0 &&
           isConditionMet
         ) {
-          // 2. 아이템/아바타 등으로 올라간 보너스 레벨 가져오기
-          // (Step 1에서 합산된 nextStats.skill.lv 데이터를 사용)
           const lvKey = `lv${skill.startLv}`;
           const bonusLv = nextStats.skill.lv[lvKey] || 0;
-
-          // 3. 성장 한계선(Hard Cap) 설정
-          // DB에 limitLv가 없으면 maxLv + 10까지 허용 (안전장치)
           let hardCap = skill.limitLv;
-          if (!hardCap || hardCap <= skill.maxLv) {
-            hardCap = skill.maxLv + 10;
-          }
-
-          // 4. 최종 적용 레벨 (중요 ★)
-          // 기존 코드 오류 수정: learnedLv에 bonusLv를 더해줍니다.
+          if (!hardCap || hardCap <= skill.maxLv) hardCap = skill.maxLv + 10;
           const finalLv = Math.min(learnedLv + bonusLv, hardCap);
-
-          // 5. 성장 계수 (1레벨은 기본값이므로, 1을 뺀 나머지 레벨만큼 성장)
           const lvBonusMult = Math.max(0, finalLv - 1);
-
-          // 최종 적용할 스탯 객체 생성
           const finalBuffStats = {};
-
-          // (A) 기본 스탯 순회하며 성장치 적용
-          // 공식: 1레벨기본값 + (레벨당성장치 × (최종레벨 - 1))
           Object.keys(skill.stats).forEach((key) => {
             const baseVal = skill.stats[key];
             const growthVal = skill.statGrowth?.[key] || 0;
-
             finalBuffStats[key] = baseVal + growthVal * lvBonusMult;
           });
-
-          // (B) 1레벨엔 없지만 성장하면서 생기는 옵션 처리 (statGrowth에만 있는 키)
           if (skill.statGrowth) {
             Object.keys(skill.statGrowth).forEach((key) => {
               if (finalBuffStats[key] === undefined) {
@@ -1018,25 +874,21 @@ export default function App() {
               }
             });
           }
-
-          // 계산된 스탯 합산 (출처에 레벨 표시하여 검증 가능케 함)
           mergeStats(finalBuffStats, `${skill.name} (Lv.${finalLv})`);
         }
       });
 
       // -----------------------------------------------------------------
-      // [Step 3] 최종 스펙 계산 (크리티컬 로직 포함)
+      // [Step 3] 최종 스펙 계산
       // -----------------------------------------------------------------
       const totalPhysAtkBase = nextStats.physAtk;
       const totalMagAtkBase = nextStats.magAtk;
       const totalStrBase = nextStats.str;
       const totalIntBase = nextStats.int;
-
       const finalPhysAtk = totalPhysAtkBase * (1 + nextStats.physAtkInc / 100);
       const finalMagAtk = totalMagAtkBase * (1 + nextStats.magAtkInc / 100);
       const finalStr = totalStrBase * (1 + nextStats.strInc / 100);
       const finalInt = totalIntBase * (1 + nextStats.intInc / 100);
-
       const mainStatVal = Math.max(finalStr, finalInt);
       const mainAtkVal = Math.max(finalPhysAtk, finalMagAtk);
       const statFactor = 1 + mainStatVal / 250;
@@ -1045,7 +897,6 @@ export default function App() {
       const inflicted = [];
       if (nextStats.elInflict1 > 0) inflicted.push(nextStats.elInflict1);
       if (nextStats.elInflict2 > 0) inflicted.push(nextStats.elInflict2);
-
       let maxEle = 0;
       if (inflicted.length > 0) {
         let currentMax = -9999;
@@ -1057,28 +908,18 @@ export default function App() {
       }
       const eleFactor = 1 + maxEle * 0.0045;
 
-      // 크리티컬 확률 정밀 계산 (변환비 f 적용 & 100% 상한선 적용)
       const charLevel = userStats.character.level || 85;
       let critConversionF = charLevel * 1.11 - 52.7;
       if (critConversionF <= 0) critConversionF = 1;
-
-      // 1. 계산값 산출
       let rawPhysCritRate =
         3 + nextStats.physCritRate + nextStats.physCrit / critConversionF;
       let rawMagCritRate =
         3 + nextStats.magCritRate + nextStats.magCrit / critConversionF;
-
-      // ★ [수정] 100% 상한선 적용 (UI 표시용 & 계산용 통일)
       const realPhysCritRate = Math.min(100, Math.max(0, rawPhysCritRate));
       const realMagCritRate = Math.min(100, Math.max(0, rawMagCritRate));
-
-      // 데미지 기대값 계산용 (이제 real 값을 그대로 써도 안전함)
       const effectiveCritRate =
         mainStatVal === finalStr ? realPhysCritRate : realMagCritRate;
-
-      // 크리티컬 데미지 공식 (곱연산)
       const critDmgMult = 1.5 * (1 + nextStats.critDmgInc / 100);
-
       const critFactor =
         1 - effectiveCritRate / 100 + (effectiveCritRate / 100) * critDmgMult;
       const dmgIncFactor =
@@ -1091,7 +932,6 @@ export default function App() {
       let waterAdd = (nextStats.waterAddDmg / 100) * (1.05 + 0.0045 * waterEle);
       let lightAdd = (nextStats.lightAddDmg / 100) * (1.05 + 0.0045 * lightEle);
       let darkAdd = (nextStats.darkAddDmg / 100) * (1.05 + 0.0045 * darkEle);
-
       const totalAddDmgVal =
         (nextStats.addDmg + nextStats.counterAddDmg) / 100 +
         finalHighestEleAdd +
@@ -1105,19 +945,10 @@ export default function App() {
       const allTypeFactor = totalAllTypeDmgRatio;
       const finalDmgIncFactor = totalFinalDmgRatio;
 
-      // ★★★ [NEW] 데미지 옵션 적용 (카운터, 백어택, 투함포) ★★★
-      // 안전장치: damageOptions가 없을 경우를 대비해 빈 객체 처리
       const { counter, backAttack, potion } = userStats.damageOptions || {};
-
       let optionMultiplier = 1.0;
-
-      // 1. 카운터 (최종 데미지 25% 증가 -> 1.25배)
       if (counter) optionMultiplier *= 1.25;
-
-      // 2. 백어택 (최종 데미지 10% 증가 -> 1.10배)
       if (backAttack) optionMultiplier *= 1.1;
-
-      // 3. 투신의 함성 포션 (최종 데미지 12% 증가 -> 1.12배)
       if (potion) optionMultiplier *= 1.12;
 
       // -----------------------------------------------------------------
@@ -1131,9 +962,7 @@ export default function App() {
       const dmgTransferMap = {};
       const nugolTransferMap = {};
 
-      // ---------------------------------------------------------
       // [A] 공통 팩터
-      // ---------------------------------------------------------
       const defShredVal = nextStats.defShred || 0;
       const defShredFactor = 1 + defShredVal / 100;
       const targetLevel = enemyLevel > 0 ? enemyLevel : 85;
@@ -1156,11 +985,6 @@ export default function App() {
         defShredFactor *
         optionMultiplier;
 
-      // ---------------------------------------------------------
-      // [B] 계수표용 팩터
-      // ---------------------------------------------------------
-      const potentialFactor = levelDefenseFactor;
-
       const classSkills = SKILL_DB.filter((s) => {
         const isJob =
           String(s.jobGroup).replace(/\s/g, "") ===
@@ -1171,17 +995,13 @@ export default function App() {
         return isJob && isSub && (s.type === "active" || s.type === "onhit");
       });
 
-      // =========================================================
       // [Logic Part 1] 시간 예산 계산 (Loop 1)
-      // =========================================================
       let myTreeVipTime = 0;
       let nugolVipTime = 0;
       const skillBuffer = [];
 
       classSkills.forEach((skill) => {
-        // ★ [안전장치 1] lvKey 선언 (가장 먼저!)
         const lvKey = `lv${skill.startLv}`;
-
         const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
         const finalCdrPct = Math.min(50, rawCdr);
 
@@ -1192,7 +1012,6 @@ export default function App() {
           skill.category === "basic" || skill.category === "common" ? 0.8 : 1.0;
         const actionTime = skill.actionTime || defaultActionTime;
 
-        // 우선순위
         let defaultPriority = 50;
         if (skill.category === "normal" || skill.type === "active")
           defaultPriority = 100;
@@ -1202,7 +1021,6 @@ export default function App() {
         const priority =
           skill.priority !== undefined ? skill.priority : defaultPriority;
 
-        // Mechanics 파싱
         let mech = null;
         if (typeof skill.mechanics === "string") {
           try {
@@ -1213,7 +1031,6 @@ export default function App() {
         }
         const isPassiveDmg = mech && mech.type === "passive_damage";
 
-        // [MyTree] 이론상 사이클
         const effectiveCycle = Math.max(realCooldown, actionTime);
         let rawCount = 0;
 
@@ -1222,7 +1039,6 @@ export default function App() {
           else rawCount = 15;
         } else if (effectiveCycle > 0) rawCount = 60 / effectiveCycle;
 
-        // [Nugol] 실전 정수 사이클 (VIP용)
         let vipNugolCount = 0;
         if (priority >= 50 && skill.type !== "onhit" && !isPassiveDmg) {
           let currentTime = 0;
@@ -1233,7 +1049,6 @@ export default function App() {
           if (vipNugolCount === 0 && realCooldown > 0) vipNugolCount = 1;
         }
 
-        // VIP 시간 누적
         if (priority >= 50 && skill.type !== "onhit" && !isPassiveDmg) {
           myTreeVipTime += rawCount * actionTime;
           nugolVipTime += vipNugolCount * actionTime;
@@ -1250,14 +1065,10 @@ export default function App() {
         });
       });
 
-      // 자투리 시간
       let myTreeRemainingTime = Math.max(0, 60 - myTreeVipTime);
       let nugolRemainingTime = Math.max(0, 60 - nugolVipTime);
 
-      // =========================================================
       // [Logic Part 2] 실제 3가지 리스트 생성 (Loop 2)
-      // =========================================================
-
       skillBuffer.forEach((data) => {
         const {
           skill,
@@ -1269,25 +1080,19 @@ export default function App() {
           isPassiveDmg,
         } = data;
 
-        // ★★★ [안전장치 2] lvKey 선언 (여기도 가장 먼저!) ★★★
+        // ★★★ lvKey Declaration (Crucial) ★★★
         const lvKey = `lv${skill.startLv}`;
 
-        // 변수 정의
         const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
         const finalCdrPct = Math.min(50, rawCdr);
 
-        // -----------------------------------------------------
-        // 1. [MY_TREE] & 2. [NUGOL] 동시 계산
-        // -----------------------------------------------------
         let myTreeCount = rawCount;
         let nugolCount = vipNugolCount;
 
         if (skill.type !== "onhit" && !isPassiveDmg && priority < 50) {
-          // [MyTree]
           const maxFillerCount = myTreeRemainingTime / actionTime;
           myTreeCount = Math.min(rawCount, maxFillerCount);
 
-          // [Nugol]
           const maxNugolFiller = Math.floor(nugolRemainingTime / actionTime);
           const effectiveCycle = Math.max(realCooldown, actionTime);
           const cooldownLimit =
@@ -1300,12 +1105,10 @@ export default function App() {
           nugolCount = 0;
         }
 
-        // [복구] Nugol onhit 횟수 복구 (15회)
         if (skill.type === "onhit" && !isPassiveDmg) {
           nugolCount = 15;
         }
 
-        // 데미지 계산
         const learnedLv = userStats.skill.levels[skill.id] || skill.minLv;
 
         if (learnedLv > 0) {
@@ -1336,7 +1139,6 @@ export default function App() {
           const myOneHitDmgRaw =
             myBaseDmg * tpMultiplier * commonFactor * specificSkillFactor;
 
-          // [Context] 실전 모드
           const mechContext = {
             allSkills: SKILL_DB,
             commonFactor,
@@ -1356,7 +1158,6 @@ export default function App() {
             transferTargetId,
           } = applyJobMechanics(skill, userStats, myOneHitDmgRaw, mechContext);
 
-          // [MyTree 합산]
           const myTotalDmg =
             myOneHitDmg * myTreeCount + (myMechAdd || 0) * myTreeCount;
           totalOneMinSkillDmg += myTotalDmg;
@@ -1377,7 +1178,6 @@ export default function App() {
             rawDmg: myTotalDmg,
           });
 
-          // [Nugol 합산]
           const nugolTotalDmg =
             myOneHitDmg * nugolCount + (myMechAdd || 0) * nugolCount;
 
@@ -1396,16 +1196,12 @@ export default function App() {
             rawDmg: nugolTotalDmg,
           });
 
-          // -----------------------------------------------------
-          // 3. [POTENTIAL] 계수표
-          // -----------------------------------------------------
+          // [POTENTIAL] 계수표
           const pureMaxLv = skill.maxLv || skill.limitLv;
-
           const maxRate =
             skill.baseDamageRate + skill.damageRateGrowth * (pureMaxLv - 1);
           const maxFlat =
             skill.baseFlatDamage + skill.flatDamageGrowth * (pureMaxLv - 1);
-
           const STANDARD_ATK = 10000;
           const potBaseDmg = STANDARD_ATK * (maxRate / 100) + maxFlat;
           const potOneHitDmgRaw = potBaseDmg;
@@ -1443,11 +1239,8 @@ export default function App() {
         }
       });
 
-      // =========================================================
       // [C] 후처리 (우체통 수거)
-      // =========================================================
 
-      // 1. MyTree 우체통 털기
       Object.keys(dmgTransferMap).forEach((targetId) => {
         const target = myTreeList.find((item) => item.id === targetId);
         if (target) {
@@ -1457,7 +1250,6 @@ export default function App() {
         }
       });
 
-      // 2. Nugol 우체통 털기
       Object.keys(nugolTransferMap).forEach((targetId) => {
         const target = nugolList.find((item) => item.id === targetId);
         if (target) {
@@ -1466,9 +1258,7 @@ export default function App() {
         }
       });
 
-      // -----------------------------------------------------------------
-      // [Step 5] 상태이상 데미지 추가 및 최종 합산
-      // -----------------------------------------------------------------
+      // [Step 5] 상태이상 데미지
       const {
         poisonDmg,
         bleedDmg,
@@ -1483,7 +1273,6 @@ export default function App() {
       const calculateStatus = (baseDmg, rate, inc) =>
         baseDmg * (rate / 100) * (1 + inc / 100);
 
-      // (1) MyTree 상태이상
       const myTreePoison = calculateStatus(
         totalOneMinSkillDmg,
         poisonDmg,
@@ -1505,7 +1294,6 @@ export default function App() {
         myTreePoison + myTreeBleed + myTreeBurn + myTreeShock;
       const grandTotalOneMinDmg = totalOneMinSkillDmg + myTreeStatusTotal;
 
-      // (2) Nugol 상태이상
       const nugolSkillSum = nugolList.reduce((acc, cur) => acc + cur.rawDmg, 0);
       const nugolPoison = calculateStatus(nugolSkillSum, poisonDmg, poisonInc);
       const nugolBleed = calculateStatus(nugolSkillSum, bleedDmg, bleedInc);
@@ -1564,16 +1352,11 @@ export default function App() {
       );
       addStatusItems(nugolList, nugolPoison, nugolBleed, nugolBurn, nugolShock);
 
-      // ---------------------------------------------------------
       // [D] 정렬 및 Top 18 처리
-      // ---------------------------------------------------------
-
-      // 정렬 (내림차순)
       myTreeList.sort((a, b) => b.rawDmg - a.rawDmg);
       nugolList.sort((a, b) => b.rawDmg - a.rawDmg);
       potentialList.sort((a, b) => b.rawDmg - a.rawDmg);
 
-      // 점유율 (MyTree)
       myTreeList.forEach((item) => {
         item.share =
           grandTotalOneMinDmg > 0
@@ -1581,7 +1364,6 @@ export default function App() {
             : 0;
       });
 
-      // ★ Nugol Top 18 로직
       const nugolSkillsOnly = nugolList.filter((i) => !i.isStatus);
       const nugolStatusOnly = nugolList.filter((i) => i.isStatus);
 
@@ -1605,11 +1387,7 @@ export default function App() {
         }
       });
 
-      // =========================================================
-      // [E] 데이터 저장 (State Update)
-      // =========================================================
-
-      // 1. 분석용 데이터 저장
+      // [E] 데이터 저장
       setAnalysisData({
         myTree: myTreeList,
         nugol: nugolList,
@@ -1618,7 +1396,6 @@ export default function App() {
         nugolTotalDmg: Math.floor(nugolGrandTotal),
       });
 
-      // 2. UI용 데이터 업데이트 (왼쪽 사이드바)
       const uiStats = {
         ...nextStats,
         ...nextStats.status,
@@ -1665,7 +1442,6 @@ export default function App() {
 
       setFinalStats(uiStats);
 
-      // 3. 메인 화면용 데이터 업데이트
       setFinalDamageInfo({
         normal: Math.floor(totalOneMinSkillDmg),
         status: Math.floor(myTreeStatusTotal),
