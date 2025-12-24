@@ -1172,15 +1172,16 @@ export default function App() {
       });
 
       // =========================================================
-      // [Logic Part 1] 시간 예산 계산
+      // [Logic Part 1] 시간 예산 계산 (Loop 1)
       // =========================================================
       let myTreeVipTime = 0;
       let nugolVipTime = 0;
       const skillBuffer = [];
 
       classSkills.forEach((skill) => {
-        // 변수 정의
+        // ★ [안전장치 1] lvKey 선언 (가장 먼저!)
         const lvKey = `lv${skill.startLv}`;
+
         const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
         const finalCdrPct = Math.min(50, rawCdr);
 
@@ -1218,7 +1219,7 @@ export default function App() {
 
         if (skill.type === "onhit") {
           if (isPassiveDmg) rawCount = 0;
-          else rawCount = 15; // ★ [복구] 다시 15회로 원상복구
+          else rawCount = 15;
         } else if (effectiveCycle > 0) rawCount = 60 / effectiveCycle;
 
         // [Nugol] 실전 정수 사이클 (VIP용)
@@ -1254,7 +1255,7 @@ export default function App() {
       let nugolRemainingTime = Math.max(0, 60 - nugolVipTime);
 
       // =========================================================
-      // [Logic Part 2] 실제 3가지 리스트 생성
+      // [Logic Part 2] 실제 3가지 리스트 생성 (Loop 2)
       // =========================================================
 
       skillBuffer.forEach((data) => {
@@ -1268,7 +1269,10 @@ export default function App() {
           isPassiveDmg,
         } = data;
 
+        // ★★★ [안전장치 2] lvKey 선언 (여기도 가장 먼저!) ★★★
         const lvKey = `lv${skill.startLv}`;
+
+        // 변수 정의
         const rawCdr = nextStats.skill.cdr?.[lvKey] || 0;
         const finalCdrPct = Math.min(50, rawCdr);
 
@@ -1296,7 +1300,7 @@ export default function App() {
           nugolCount = 0;
         }
 
-        // ★ [복구] Nugol onhit 횟수 복구 (15회)
+        // [복구] Nugol onhit 횟수 복구 (15회)
         if (skill.type === "onhit" && !isPassiveDmg) {
           nugolCount = 15;
         }
@@ -1605,7 +1609,7 @@ export default function App() {
       // [E] 데이터 저장 (State Update)
       // =========================================================
 
-      // ★★★ [FIX] 이 부분이 빠져서 에러가 났습니다! 다시 복구합니다. ★★★
+      // 1. 분석용 데이터 저장
       setAnalysisData({
         myTree: myTreeList,
         nugol: nugolList,
@@ -1614,7 +1618,7 @@ export default function App() {
         nugolTotalDmg: Math.floor(nugolGrandTotal),
       });
 
-      // UI용 데이터 업데이트 (왼쪽 사이드바)
+      // 2. UI용 데이터 업데이트 (왼쪽 사이드바)
       const uiStats = {
         ...nextStats,
         ...nextStats.status,
@@ -1661,7 +1665,7 @@ export default function App() {
 
       setFinalStats(uiStats);
 
-      // 메인 화면용 데이터 업데이트
+      // 3. 메인 화면용 데이터 업데이트
       setFinalDamageInfo({
         normal: Math.floor(totalOneMinSkillDmg),
         status: Math.floor(myTreeStatusTotal),
